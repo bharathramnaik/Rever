@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
-import 'package:rever/src/data/providers/concept_providers.dart';
+import 'package:rever/src/data/providers/feed_provider.dart';
+import 'package:rever/src/data/models/feed_item_model.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,73 +14,50 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _GreetingHeader(),
-                const SizedBox(height: 24),
-                const _DailyJourney(),
-                const SizedBox(height: 32),
-                Text(
-                  'Explore Concepts',
-                  style: theme.textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 12),
-                const _ExploreConcepts(),
-                const SizedBox(height: 32),
-                Text(
-                  'Your Knowledge',
-                  style: theme.textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 12),
-                const _KnowledgeOverview(),
-              ],
-            ),
-          ),
+        child: CustomScrollView(
+          slivers: [
+            const _FeedHeader(),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            const _FeedContent(),
+          ],
         ),
       ),
     );
   }
 }
 
-class _GreetingHeader extends ConsumerWidget {
-  const _GreetingHeader();
+class _FeedHeader extends ConsumerWidget {
+  const _FeedHeader();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? 'Good morning'
-        : hour < 18
-            ? 'Good afternoon'
-            : 'Good evening';
+    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     final profile = ref.watch(activeProfileIdProvider);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(greeting, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 4),
-              Text(profile ?? 'Learner',
-                  style: theme.textTheme.displayLarge),
-            ],
-          ),
-        ),
+    return SliverAppBar(
+      floating: true,
+      backgroundColor: theme.colorScheme.surface,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(greeting, style: theme.textTheme.bodySmall),
+          Text(profile ?? 'Learner', style: theme.textTheme.titleLarge),
+        ],
+      ),
+      actions: [
         GestureDetector(
           onTap: () => context.go('/profiles'),
-          child: CircleAvatar(
-            radius: 24,
-            backgroundColor: theme.colorScheme.primary,
-            child: Text(
-              (profile ?? 'L')[0],
-              style: TextStyle(color: theme.colorScheme.onPrimary),
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: theme.colorScheme.primary,
+              child: Text(
+                (profile ?? 'L')[0].toUpperCase(),
+                style: TextStyle(color: theme.colorScheme.onPrimary),
+              ),
             ),
           ),
         ),
@@ -88,14 +66,73 @@ class _GreetingHeader extends ConsumerWidget {
   }
 }
 
-class _DailyJourney extends ConsumerWidget {
-  const _DailyJourney();
+class _FeedContent extends ConsumerWidget {
+  const _FeedContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final feedAsync = ref.watch(feedProvider);
+
+    return feedAsync.when(
+      data: (items) => SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final item = items[index];
+            return _FeedCard(item: item);
+          },
+          childCount: items.length,
+        ),
+      ),
+      loading: () => const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => SliverFillRemaining(
+        child: Center(child: Text('$e')),
+      ),
+    );
+  }
+}
+
+class _FeedCard extends ConsumerWidget {
+  final FeedItemModel item;
+
+  const _FeedCard({required this.item});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
+    switch (item.type) {
+      case FeedItemType.discovery:
+        return _DiscoveryCard(item: item, theme: theme);
+      case FeedItemType.insight:
+        return _InsightCard(item: item, theme: theme);
+      case FeedItemType.concept:
+        return _ConceptFeedCard(item: item, theme: theme);
+      case FeedItemType.question:
+        return _QuestionCard(item: item, theme: theme);
+      case FeedItemType.challenge:
+        return _ChallengeCard(item: item, theme: theme);
+      default:
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: ListTile(title: Text(item.title)),
+        );
+    }
+  }
+}
+
+class _DiscoveryCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _DiscoveryCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
@@ -104,232 +141,174 @@ class _DailyJourney extends ConsumerWidget {
         ),
         borderRadius: BorderRadius.circular(20),
       ),
-      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Your 10-minute Journey',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
-            ),
+          Row(
+            children: [
+              Icon(Icons.auto_stories, color: Colors.white, size: 24),
+              const SizedBox(width: 8),
+              Text('Today', style: TextStyle(color: Colors.white70)),
+            ],
           ),
           const SizedBox(height: 12),
-          const _JourneyItem(
-            icon: Icons.auto_stories,
-            text: 'Learn: How transformers work',
-            duration: '2 min',
-          ),
-          const _JourneyItem(
-            icon: Icons.explore,
-            text: 'Explore: Transformer visual map',
-            duration: '3 min',
-          ),
-          const _JourneyItem(
-            icon: Icons.quiz,
-            text: 'Quiz: Test yesterday\'s concepts',
-            duration: '2 min',
-          ),
-          const _JourneyItem(
-            icon: Icons.replay,
-            text: 'Remember: 3 concepts due',
-            duration: '2 min',
-          ),
+          Text(item.title, style: theme.textTheme.headlineMedium?.copyWith(color: Colors.white)),
+          const SizedBox(height: 4),
+          Text(item.subtitle ?? '', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: 0.3,
-            backgroundColor: Colors.white.withValues(alpha: 0.3),
-            color: Colors.white,
-          ),
+          LinearProgressIndicator(value: 0.3, backgroundColor: Colors.white30, color: Colors.white),
         ],
       ),
     );
   }
 }
 
-class _JourneyItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final String duration;
+class _InsightCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
 
-  const _JourneyItem({
-    required this.icon,
-    required this.text,
-    required this.duration,
-  });
+  const _InsightCard({required this.item, required this.theme});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Text(text, style: const TextStyle(color: Colors.white))),
-          Text(
-            duration,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-          ),
-        ],
+    final colorHex = item.metadata?['color'] as String? ?? '#6C63FF';
+    final color = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+          child: Icon(Icons.explore, color: color),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['slug'] as String?;
+          if (slug != null) context.go('/topic/$slug');
+        },
       ),
     );
   }
 }
 
-class _ExploreConcepts extends ConsumerWidget {
-  const _ExploreConcepts();
+class _ConceptFeedCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _ConceptFeedCard({required this.item, required this.theme});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final conceptsAsync = ref.watch(allConceptsProvider);
-
-    return conceptsAsync.when(
-      data: (concepts) {
-        if (concepts.isEmpty) {
-          return const SizedBox(
-            height: 100,
-            child: Center(child: Text('No concepts available')),
-          );
-        }
-        final display = concepts.take(6).toList();
-        return SizedBox(
-          height: 180,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: display.length,
-            itemBuilder: (context, index) {
-              final concept = display[index];
-              return GestureDetector(
-                onTap: () => context.go('/concept/${concept.slug}'),
-                child: Container(
-                  width: 150,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: theme.colorScheme.outline),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 60,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.auto_stories,
-                              color: theme.colorScheme.primary),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        concept.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: 0.3 + (index * 0.1),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        concept.difficulty,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.auto_stories, color: theme.colorScheme.primary),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (item.subtitle != null)
+              Text(item.subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Chip(
+                  label: Text(item.metadata?['difficulty'] as String? ?? 'beginner', style: const TextStyle(fontSize: 10)),
+                  visualDensity: VisualDensity.compact,
                 ),
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const SizedBox(
-        height: 100,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => SizedBox(
-        height: 100,
-        child: Center(child: Text('$e')),
+                const SizedBox(width: 8),
+                if (item.metadata?['minutes'] != null)
+                  Text('${item.metadata!['minutes']} min', style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['slug'] as String?;
+          if (slug != null) context.go('/concept/$slug');
+        },
       ),
     );
   }
 }
 
-class _KnowledgeOverview extends StatelessWidget {
-  const _KnowledgeOverview();
+class _QuestionCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _QuestionCard({required this.item, required this.theme});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: theme.colorScheme.primary.withValues(alpha: 0.05),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48, height: 48,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.help_outline, color: theme.colorScheme.secondary),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Text(item.subtitle ?? ''),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['concept_slug'] as String?;
+          if (slug != null) context.go('/concept/$slug');
+        },
+      ),
+    );
+  }
+}
 
+class _ChallengeCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _ChallengeCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline),
       ),
       child: Row(
         children: [
-          _KnowledgeStat(theme, '82%', 'Technology'),
-          _Divider(theme),
-          _KnowledgeStat(theme, '76%', 'AI'),
-          _Divider(theme),
-          _KnowledgeStat(theme, '69%', 'Finance'),
+          Icon(Icons.local_fire_department, color: Colors.orange, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: theme.textTheme.titleMedium),
+                Text(item.subtitle ?? '', style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
         ],
       ),
-    );
-  }
-}
-
-class _KnowledgeStat extends StatelessWidget {
-  final ThemeData theme;
-  final String value;
-  final String label;
-
-  const _KnowledgeStat(this.theme, this.value, this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: theme.colorScheme.primary,
-              )),
-          const SizedBox(height: 4),
-          Text(label, style: theme.textTheme.bodyMedium),
-        ],
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  final ThemeData theme;
-  const _Divider(this.theme);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 40,
-      color: theme.colorScheme.outline,
     );
   }
 }

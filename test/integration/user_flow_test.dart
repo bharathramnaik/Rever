@@ -6,6 +6,8 @@ import 'package:rever/src/data/providers/topic_providers.dart';
 import 'package:rever/src/data/providers/concept_providers.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
 import 'package:rever/src/data/providers/streak_providers.dart';
+import 'package:rever/src/data/providers/feed_provider.dart';
+import 'package:rever/src/data/models/feed_item_model.dart';
 import '../helpers/test_data.dart';
 
 void main() {
@@ -26,6 +28,15 @@ void main() {
                 .overrideWith((ref, profileId) async => testLearningObjects),
             streakProvider
                 .overrideWith((ref, profileId) async => testStreak),
+            feedProvider.overrideWith((ref) async => [
+              FeedItemModel(
+                id: 'test-feed-1',
+                type: FeedItemType.discovery,
+                title: 'Your Daily Journey',
+                subtitle: 'Test feed',
+                createdAt: DateTime.now(),
+              ),
+            ]),
           ],
           child: const ReverApp(),
         ),
@@ -51,8 +62,8 @@ void main() {
       await tester.tap(find.text('Bharath'));
       await tester.pumpAndSettle();
 
-      // Should be on home screen
-      expect(find.text('Your 10-minute Journey'), findsOneWidget);
+      // Should be on home screen (greeting or profile name)
+      expect(find.text('Learner'), findsOneWidget);
     });
 
     testWidgets('explore -> concept navigation works', (tester) async {

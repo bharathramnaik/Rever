@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/data/models/topic_model.dart';
 import 'package:rever/src/data/providers/topic_providers.dart';
+import 'package:rever/src/data/providers/source_providers.dart';
 
 IconData _iconFromName(String? name) {
   return switch (name) {
@@ -43,7 +44,8 @@ class ExploreScreen extends ConsumerWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -63,34 +65,94 @@ class ExploreScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
               Text('Topics', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 12),
-              Expanded(
-                child: topicsAsync.when(
-                  data: (topics) => GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.5,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                    ),
-                    itemCount: topics.length,
-                    itemBuilder: (context, index) {
-                      final topic = topics[index];
-                      return _TopicCard(topic: topic);
-                    },
+              topicsAsync.when(
+                data: (topics) => GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.5,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
                   ),
-                  loading: () => const Center(
-                      child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('$e')),
+                  itemCount: topics.length,
+                  itemBuilder: (context, index) {
+                    final topic = topics[index];
+                    return _TopicCard(topic: topic);
+                  },
                 ),
+                loading: () => const SizedBox(
+                    height: 200, child: Center(child: CircularProgressIndicator())),
+                error: (e, _) => Center(child: Text('$e')),
               ),
+              const SizedBox(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Sources', style: theme.textTheme.headlineMedium),
+                  TextButton(
+                    onPressed: () => context.go('/sources'),
+                    child: const Text('See all'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const _SourcesPreview(),
             ],
           ),
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _SourcesPreview extends ConsumerWidget {
+  const _SourcesPreview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final sourcesAsync = ref.watch(sourcesProvider);
+
+    return sourcesAsync.when(
+      data: (sources) {
+        if (sources.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: sources.length,
+            itemBuilder: (context, index) {
+              final s = sources[index];
+              return Container(
+                width: 140,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.colorScheme.outline),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.menu_book, color: theme.colorScheme.primary),
+                    const Spacer(),
+                    Text(s.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(height: 100),
+      error: (_, __) => const SizedBox(height: 100),
     );
   }
 }

@@ -12,6 +12,7 @@ import '../features/library/presentation/screens/library_screen.dart';
 import '../features/spaces/presentation/screens/create_screen.dart';
 import '../features/ai_tutor/presentation/screens/ai_tutor_screen.dart';
 import '../features/concept/presentation/screens/concept_screen.dart';
+import '../features/sources/presentation/screens/sources_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -61,6 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ConceptScreen(
           conceptId: state.pathParameters['id']!,
         ),
+      ),
+      GoRoute(
+        path: '/sources',
+        builder: (context, state) => const SourcesScreen(),
       ),
     ],
   );
