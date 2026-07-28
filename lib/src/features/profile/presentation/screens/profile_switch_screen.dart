@@ -31,21 +31,24 @@ class ProfileSwitchScreen extends ConsumerWidget {
               _ProfileCard(
                 name: 'Bharath',
                 type: 'Adult',
-                emoji: '👨‍💻',
+                icon: Icons.face,
+                color: const Color(0xFF6C63FF),
                 onTap: () => context.go('/home'),
               ),
               const SizedBox(height: 16),
               _ProfileCard(
                 name: 'Arjun',
                 type: 'Child (Age 8)',
-                emoji: '👦',
+                icon: Icons.child_care,
+                color: const Color(0xFF00D9A6),
                 onTap: () => context.go('/home'),
               ),
               const SizedBox(height: 16),
               _ProfileCard(
                 name: 'Nikhil',
                 type: 'Teen (Age 15)',
-                emoji: '🧑‍🎓',
+                icon: Icons.school,
+                color: const Color(0xFFFF6B6B),
                 onTap: () => context.go('/home'),
               ),
               const SizedBox(height: 16),
@@ -76,13 +79,15 @@ class ProfileSwitchScreen extends ConsumerWidget {
 class _ProfileCard extends StatelessWidget {
   final String name;
   final String type;
-  final String emoji;
+  final IconData icon;
+  final Color color;
   final VoidCallback onTap;
 
   const _ProfileCard({
     required this.name,
     required this.type,
-    required this.emoji,
+    required this.icon,
+    required this.color,
     required this.onTap,
   });
 
@@ -94,10 +99,10 @@ class _ProfileCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-          child: Text(emoji, style: const TextStyle(fontSize: 28)),
-        ),
+            radius: 28,
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(icon, color: color, size: 28),
+          ),
         title: Text(name, style: theme.textTheme.headlineMedium),
         subtitle: Text(type, style: theme.textTheme.bodyMedium),
         trailing: const Icon(Icons.chevron_right),

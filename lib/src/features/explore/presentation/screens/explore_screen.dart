@@ -54,8 +54,8 @@ class ExploreScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(_topics[index].emoji, style: const TextStyle(fontSize: 28)),
+                    children: [
+                            Icon(_topics[index].icon, size: 28, color: _topics[index].color),
                               const SizedBox(height: 8),
                               Text(
                                 _topics[index].name,
@@ -81,17 +81,18 @@ class ExploreScreen extends ConsumerWidget {
 
 class _Topic {
   final String name;
-  final String emoji;
-  const _Topic(this.name, this.emoji);
+  final IconData icon;
+  final Color color;
+  const _Topic(this.name, this.icon, this.color);
 }
 
 const _topics = [
-  _Topic('Technology', '💻'),
-  _Topic('Science', '🔬'),
-  _Topic('Mathematics', '📐'),
-  _Topic('History', '📜'),
-  _Topic('Psychology', '🧠'),
-  _Topic('Finance', '💰'),
-  _Topic('Philosophy', '🤔'),
-  _Topic('Space', '🚀'),
+  _Topic('Technology', Icons.code, Color(0xFF6C63FF)),
+  _Topic('Science', Icons.biotech, Color(0xFF00D9A6)),
+  _Topic('Mathematics', Icons.calculate, Color(0xFFFF6B6B)),
+  _Topic('History', Icons.history, Color(0xFFFFD93D)),
+  _Topic('Psychology', Icons.psychology, Color(0xFF8B83FF)),
+  _Topic('Finance', Icons.account_balance, Color(0xFF00E6B3)),
+  _Topic('Philosophy', Icons.self_improvement, Color(0xFFFF8C42)),
+  _Topic('Space', Icons.rocket_launch, Color(0xFF4A90D9)),
 ];
