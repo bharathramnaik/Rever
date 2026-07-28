@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/data/providers/concept_providers.dart';
+import 'package:rever/src/data/models/concept_model.dart';
+import 'package:rever/src/data/models/learning_object_model.dart';
 
 class ConceptScreen extends ConsumerWidget {
   final String conceptId;
@@ -8,195 +11,234 @@ class ConceptScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final conceptAsync = ref.watch(conceptBySlugProvider(conceptId));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Loading...'),
+        title: conceptAsync.when(
+          data: (c) => Text(c?.title ?? 'Concept'),
+          loading: () => const Text('Loading...'),
+          error: (e, _) => const Text('Error'),
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.bookmark_outline), onPressed: () {}),
           IconButton(icon: const Icon(Icons.share), onPressed: () {}),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Concept title
-          Text('How Transformers Work', style: theme.textTheme.displayLarge),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Chip(label: Text('AI'), visualDensity: VisualDensity.compact),
-              const SizedBox(width: 8),
-              const Chip(label: Text('Beginner'), visualDensity: VisualDensity.compact),
-              const Spacer(),
-              Text('5 min read', style: theme.textTheme.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Mode selector
-          Row(
-            children: [
-              _ModeButton(theme: theme, label: 'Read', icon: Icons.menu_book, selected: true),
-              const SizedBox(width: 8),
-              _ModeButton(theme: theme, label: 'Visual', icon: Icons.bubble_chart, selected: false),
-              const SizedBox(width: 8),
-              _ModeButton(theme: theme, label: 'Quiz', icon: Icons.quiz, selected: false),
-              const SizedBox(width: 8),
-              _ModeButton(theme: theme, label: 'Ask AI', icon: Icons.auto_awesome, selected: false),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Content placeholder
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Icon(Icons.image, size: 48, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Key points
-          Text('Key Points', style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 12),
-          const _KeyPoint(
-            number: '1',
-            text: 'Transformers are a neural network architecture introduced in 2017',
-          ),
-          const _KeyPoint(
-            number: '2',
-            text: 'They use self-attention to process sequential data in parallel',
-          ),
-          const _KeyPoint(
-            number: '3',
-            text: 'They power modern AI systems like GPT, BERT, and Claude',
-          ),
-
-          const SizedBox(height: 24),
-
-          // Related concepts
-          Text('Related Concepts', style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 12),
-          _RelatedChip(theme: theme, label: 'Neural Networks'),
-          _RelatedChip(theme: theme, label: 'Deep Learning'),
-          _RelatedChip(theme: theme, label: 'Attention Mechanism'),
-          _RelatedChip(theme: theme, label: 'Large Language Models'),
-        ],
+      body: conceptAsync.when(
+        data: (concept) {
+          if (concept == null) {
+            return const Center(child: Text('Concept not found'));
+          }
+          return _ConceptContent(concept: concept);
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('$e')),
       ),
     );
   }
 }
 
-class _ModeButton extends StatelessWidget {
-  final ThemeData theme;
-  final String label;
-  final IconData icon;
-  final bool selected;
+class _ConceptContent extends ConsumerWidget {
+  final ConceptModel concept;
+  const _ConceptContent({required this.concept});
 
-  const _ModeButton({
-    required this.theme,
-    required this.label,
-    required this.icon,
-    required this.selected,
-  });
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final objectsAsync = ref.watch(learningObjectsProvider(concept.id));
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(concept.title, style: theme.textTheme.displayLarge),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Chip(
+              label: Text(
+                concept.difficulty[0].toUpperCase() +
+                    concept.difficulty.substring(1),
+              ),
+              visualDensity: VisualDensity.compact,
+            ),
+            const SizedBox(width: 8),
+            if (concept.estimatedMinutes != null)
+              Text('${concept.estimatedMinutes} min read',
+                  style: theme.textTheme.bodyMedium),
+          ],
+        ),
+        if (concept.summary != null) ...[
+          const SizedBox(height: 16),
+          Text(concept.summary!, style: theme.textTheme.bodyLarge),
+        ],
+        const SizedBox(height: 24),
+        objectsAsync.when(
+          data: (objects) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _buildLearningObjects(objects, theme),
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Failed to load content: $e'),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildLearningObjects(
+      List<LearningObjectModel> objects, ThemeData theme) {
+    if (objects.isEmpty) {
+      return [
+        Center(
+          child: Text('No content available yet',
+              style: theme.textTheme.bodyMedium),
+        ),
+      ];
+    }
+    return objects.map((obj) {
+      switch (obj.objectType) {
+        case 'card':
+          return _ContentCard(object: obj, theme: theme);
+        case 'quiz':
+          return _QuizCard(object: obj, theme: theme);
+        default:
+          return _ContentCard(object: obj, theme: theme);
+      }
+    }).toList();
+  }
+}
+
+class _ContentCard extends StatelessWidget {
+  final LearningObjectModel object;
+  final ThemeData theme;
+
+  const _ContentCard({required this.object, required this.theme});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? theme.colorScheme.primary : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? theme.colorScheme.primary : theme.colorScheme.outline,
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(object.title, style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 8),
+            Text(
+              object.content['body'] as String? ?? '',
+              style: theme.textTheme.bodyLarge,
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: selected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-                ),
-              ),
+            if (object.content['key_points'] != null) ...[
+              const SizedBox(height: 12),
+              ...((object.content['key_points'] as List)
+                      .cast<String>()
+                      .map((p) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• '),
+                                Expanded(child: Text(p)),
+                              ],
+                            ),
+                          ))),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _KeyPoint extends StatelessWidget {
-  final String number;
-  final String text;
+class _QuizCard extends StatefulWidget {
+  final LearningObjectModel object;
+  final ThemeData theme;
 
-  const _KeyPoint({required this.number, required this.text});
+  const _QuizCard({required this.object, required this.theme});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              number,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: theme.textTheme.bodyLarge),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_QuizCard> createState() => _QuizCardState();
 }
 
-class _RelatedChip extends StatelessWidget {
-  final ThemeData theme;
-  final String label;
-
-  const _RelatedChip({required this.theme, required this.label});
+class _QuizCardState extends State<_QuizCard> {
+  int? _selected;
+  bool? _submitted;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: ActionChip(
-        label: Text(label),
-        onPressed: () {},
+    final questions =
+        (widget.object.content['questions'] as List?)?.cast<Map>() ?? [];
+    if (questions.isEmpty) return const SizedBox.shrink();
+
+    final current = questions[0];
+    final options = (current['options'] as List?)?.cast<String>() ?? [];
+    final correctIndex = current['correct_index'] as int?;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      color: widget.theme.colorScheme.primary.withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.quiz,
+                    color: widget.theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text('Quick Quiz', style: widget.theme.textTheme.titleMedium),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(current['question'] as String? ?? '',
+                style: widget.theme.textTheme.bodyLarge),
+            const SizedBox(height: 12),
+            ...List.generate(options.length, (i) {
+              final isCorrect = _submitted == true && i == correctIndex;
+              final isWrong = _submitted == true && i == _selected && i != correctIndex;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ChoiceChip(
+                  label: Text(options[i]),
+                  selected: _selected == i,
+                  selectedColor: isCorrect
+                      ? Colors.green
+                      : isWrong
+                          ? Colors.red
+                          : null,
+                  onSelected: _submitted == true
+                      ? null
+                      : (val) {
+                          setState(() => _selected = i);
+                        },
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            if (_submitted == null)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _selected == null
+                      ? null
+                      : () {
+                          setState(() => _submitted = true);
+                        },
+                  child: const Text('Check Answer'),
+                ),
+              )
+            else
+              Text(
+                _selected == correctIndex ? 'Correct!' : 'Incorrect',
+                style: TextStyle(
+                  color: _selected == correctIndex ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

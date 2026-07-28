@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/providers/profile_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -49,7 +50,12 @@ class _GreetingHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 18
+            ? 'Good afternoon'
+            : 'Good evening';
+    final profile = ref.watch(activeProfileIdProvider);
 
     return Row(
       children: [
@@ -59,25 +65,29 @@ class _GreetingHeader extends ConsumerWidget {
             children: [
               Text(greeting, style: theme.textTheme.bodyLarge),
               const SizedBox(height: 4),
-              Text('Bharath', style: theme.textTheme.displayLarge),
+              Text(profile ?? 'Learner',
+                  style: theme.textTheme.displayLarge),
             ],
           ),
         ),
         CircleAvatar(
           radius: 24,
           backgroundColor: theme.colorScheme.primary,
-          child: Text('B', style: TextStyle(color: theme.colorScheme.onPrimary)),
+          child: Text(
+            (profile ?? 'L')[0],
+            style: TextStyle(color: theme.colorScheme.onPrimary),
+          ),
         ),
       ],
     );
   }
 }
 
-class _DailyJourney extends StatelessWidget {
+class _DailyJourney extends ConsumerWidget {
   const _DailyJourney();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Container(
@@ -151,7 +161,8 @@ class _JourneyItem extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.white, size: 20),
           const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(color: Colors.white))),
+          Expanded(
+              child: Text(text, style: const TextStyle(color: Colors.white))),
           Text(
             duration,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
@@ -197,7 +208,8 @@ class _ContinueLearning extends StatelessWidget {
                 const Spacer(),
                 Text(
                   'Understanding AI',
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 const LinearProgressIndicator(value: 0.68),
@@ -249,9 +261,10 @@ class _KnowledgeStat extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(value, style: theme.textTheme.headlineMedium?.copyWith(
-            color: theme.colorScheme.primary,
-          )),
+          Text(value,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: theme.colorScheme.primary,
+              )),
           const SizedBox(height: 4),
           Text(label, style: theme.textTheme.bodyMedium),
         ],
