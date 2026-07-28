@@ -1,0 +1,72 @@
+name: rever
+description: Personal Learning OS — AI-powered learning for adults and kids.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^14.2.0
+
+  # Networking
+  dio: ^5.4.3+1
+  supabase_flutter: ^2.5.6
+
+  # Local storage
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.23
+  path_provider: ^2.1.3
+  flutter_secure_storage: ^9.2.2
+
+  # UI
+  flutter_svg: ^2.0.10+1
+  lottie: ^3.1.2
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  google_fonts: ^6.2.1
+
+  # Animations
+  rive: ^0.13.0
+
+  # Auth
+  google_sign_in: ^6.2.1
+
+  # Utilities
+  intl: ^0.19.0
+  uuid: ^4.4.0
+  logger: ^2.3.0
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+
+  # Firebase (optional in v1)
+  firebase_core: ^2.31.0
+  firebase_crashlytics: ^3.5.6
+  firebase_messaging: ^14.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+  drift_dev: ^2.18.0
+  mockito: ^5.4.4
+  mocktail: ^1.0.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/fonts/
