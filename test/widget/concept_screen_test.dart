@@ -32,7 +32,8 @@ void main() {
       );
     });
 
-    testWidgets('renders learning object cards', (tester) async {
+    testWidgets('renders card at Glance depth and quiz at Master depth',
+        (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -50,6 +51,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Transformer Architecture'), findsOneWidget);
+
+      await tester.tap(find.text('Master'));
+      await tester.pumpAndSettle();
+
       expect(find.text('Quick Quiz'), findsOneWidget);
     });
 
@@ -73,7 +78,7 @@ void main() {
       expect(find.text('Beginner'), findsOneWidget);
     });
 
-    testWidgets('shows empty state', (tester) async {
+    testWidgets('shows empty state for current depth', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -90,7 +95,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('No content available yet'), findsOneWidget);
+      expect(find.text('No glance content yet'), findsOneWidget);
     });
 
     testWidgets('shows not found when concept is null', (tester) async {

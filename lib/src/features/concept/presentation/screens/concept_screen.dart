@@ -4,14 +4,28 @@ import 'package:rever/src/data/providers/concept_providers.dart';
 import 'package:rever/src/data/models/concept_model.dart';
 import 'package:rever/src/data/models/learning_object_model.dart';
 
-class ConceptScreen extends ConsumerWidget {
-  final String conceptId;
+const _depthLevels = [
+  (label: 'Glance', icon: Icons.quickreply, level: 1, desc: 'Quick insight'),
+  (label: 'Understand', icon: Icons.psychology, level: 2, desc: 'Explanation + example'),
+  (label: 'Explore', icon: Icons.explore, level: 3, desc: 'Visual map + relationships'),
+  (label: 'Master', icon: Icons.auto_stories, level: 4, desc: 'Lesson + quiz'),
+  (label: 'Apply', icon: Icons.build, level: 5, desc: 'Exercise + project'),
+];
 
+class ConceptScreen extends ConsumerStatefulWidget {
+  final String conceptId;
   const ConceptScreen({super.key, required this.conceptId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final conceptAsync = ref.watch(conceptBySlugProvider(conceptId));
+  ConsumerState<ConceptScreen> createState() => _ConceptScreenState();
+}
+
+class _ConceptScreenState extends ConsumerState<ConceptScreen> {
+  int _selectedDepth = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final conceptAsync = ref.watch(conceptBySlugProvider(widget.conceptId));
 
     return Scaffold(
       appBar: AppBar(
@@ -30,7 +44,11 @@ class ConceptScreen extends ConsumerWidget {
           if (concept == null) {
             return const Center(child: Text('Concept not found'));
           }
-          return _ConceptContent(concept: concept);
+          return _ConceptContent(
+            concept: concept,
+            selectedDepth: _selectedDepth,
+            onDepthChanged: (d) => setState(() => _selectedDepth = d),
+          );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -41,7 +59,14 @@ class ConceptScreen extends ConsumerWidget {
 
 class _ConceptContent extends ConsumerWidget {
   final ConceptModel concept;
-  const _ConceptContent({required this.concept});
+  final int selectedDepth;
+  final ValueChanged<int> onDepthChanged;
+
+  const _ConceptContent({
+    required this.concept,
+    required this.selectedDepth,
+    required this.onDepthChanged,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,38 +98,110 @@ class _ConceptContent extends ConsumerWidget {
           Text(concept.summary!, style: theme.textTheme.bodyLarge),
         ],
         const SizedBox(height: 24),
+        _DepthSelector(
+          selectedDepth: selectedDepth,
+          onDepthChanged: onDepthChanged,
+          theme: theme,
+        ),
+        const SizedBox(height: 24),
         objectsAsync.when(
-          data: (objects) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: _buildLearningObjects(objects, theme),
-          ),
+          data: (objects) {
+            final depthInfo = _depthLevels.firstWhere(
+              (d) => d.level == selectedDepth,
+            );
+            final filtered = objects
+                .where((o) => o.inferredDepth == selectedDepth)
+                .toList();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(depthInfo.icon, size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(depthInfo.desc, style: theme.textTheme.titleMedium),
+                    const Spacer(),
+                    Text(
+                      '${filtered.length} items',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (filtered.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        children: [
+                          Icon(depthInfo.icon,
+                              size: 48,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.2)),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No ${depthInfo.label.toLowerCase()} content yet',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  ...filtered.map((obj) {
+                    switch (obj.objectType) {
+                      case 'quiz':
+                        return _QuizCard(object: obj, theme: theme);
+                      default:
+                        return _ContentCard(object: obj, theme: theme);
+                    }
+                  }),
+              ],
+            );
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text('Failed to load content: $e'),
         ),
       ],
     );
   }
+}
 
-  List<Widget> _buildLearningObjects(
-      List<LearningObjectModel> objects, ThemeData theme) {
-    if (objects.isEmpty) {
-      return [
-        Center(
-          child: Text('No content available yet',
-              style: theme.textTheme.bodyMedium),
-        ),
-      ];
-    }
-    return objects.map((obj) {
-      switch (obj.objectType) {
-        case 'card':
-          return _ContentCard(object: obj, theme: theme);
-        case 'quiz':
-          return _QuizCard(object: obj, theme: theme);
-        default:
-          return _ContentCard(object: obj, theme: theme);
-      }
-    }).toList();
+class _DepthSelector extends StatelessWidget {
+  final int selectedDepth;
+  final ValueChanged<int> onDepthChanged;
+  final ThemeData theme;
+
+  const _DepthSelector({
+    required this.selectedDepth,
+    required this.onDepthChanged,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: _depthLevels.map((d) {
+          final isSelected = d.level == selectedDepth;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              avatar: Icon(d.icon, size: 16),
+              label: Text(d.label),
+              selected: isSelected,
+              onSelected: (_) => onDepthChanged(d.level),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }
 
@@ -123,7 +220,7 @@ class _ContentCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(object.title, style: theme.textTheme.headlineMedium),
+            Text(object.title, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
               object.content['body'] as String? ?? '',
