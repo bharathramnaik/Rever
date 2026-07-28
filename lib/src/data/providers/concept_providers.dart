@@ -8,6 +8,10 @@ final conceptRepositoryProvider = Provider<ConceptRepository>((ref) {
   return ConceptRepository(ref.watch(supabaseProvider));
 });
 
+final allConceptsProvider = FutureProvider<List<ConceptModel>>((ref) {
+  return ref.watch(conceptRepositoryProvider).fetchAll();
+});
+
 final conceptsByTopicProvider =
     FutureProvider.family<List<ConceptModel>, String>((ref, topicId) {
   return ref.watch(conceptRepositoryProvider).fetchByTopic(topicId);

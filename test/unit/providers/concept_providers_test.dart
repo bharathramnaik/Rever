@@ -43,5 +43,16 @@ void main() {
       );
       expect(concepts, hasLength(3));
     });
+
+    test('allConceptsProvider returns all concepts', () async {
+      final container = ProviderContainer(
+        overrides: [
+          allConceptsProvider.overrideWith((ref) async => testConcepts),
+        ],
+      );
+      final concepts = await container.read(allConceptsProvider.future);
+      expect(concepts, hasLength(3));
+      expect(concepts[0].title, 'Concept 1');
+    });
   });
 }

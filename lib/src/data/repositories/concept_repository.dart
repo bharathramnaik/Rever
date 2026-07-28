@@ -6,6 +6,14 @@ class ConceptRepository {
   final SupabaseClient _client;
   ConceptRepository(this._client);
 
+  Future<List<ConceptModel>> fetchAll() async {
+    final data = await _client
+        .from('concepts')
+        .select()
+        .order('created_at', ascending: false);
+    return (data as List).map((e) => ConceptModel.fromJson(e)).toList();
+  }
+
   Future<List<ConceptModel>> fetchByTopic(String topicId) async {
     final linkData = await _client
         .from('concept_topics')

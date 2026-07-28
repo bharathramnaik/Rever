@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/features/home/presentation/screens/home_screen.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/data/providers/concept_providers.dart';
+import '../helpers/test_data.dart';
 
 class _BharathNotifier extends ActiveProfileIdNotifier {
   @override
@@ -16,6 +18,7 @@ void main() {
         ProviderScope(
           overrides: [
             activeProfileIdProvider.overrideWith(_BharathNotifier.new),
+            allConceptsProvider.overrideWith((ref) async => testConcepts),
           ],
           child: const MaterialApp(home: HomeScreen()),
         ),
@@ -27,6 +30,9 @@ void main() {
     testWidgets('renders greeting with default name', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [
+            allConceptsProvider.overrideWith((ref) async => testConcepts),
+          ],
           child: const MaterialApp(home: HomeScreen()),
         ),
       );
@@ -37,6 +43,9 @@ void main() {
     testWidgets('renders daily journey section', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [
+            allConceptsProvider.overrideWith((ref) async => testConcepts),
+          ],
           child: const MaterialApp(home: HomeScreen()),
         ),
       );
@@ -44,19 +53,25 @@ void main() {
       expect(find.text('Your 10-minute Journey'), findsOneWidget);
     });
 
-    testWidgets('renders continue learning section', (tester) async {
+    testWidgets('renders explore concepts section', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [
+            allConceptsProvider.overrideWith((ref) async => testConcepts),
+          ],
           child: const MaterialApp(home: HomeScreen()),
         ),
       );
 
-      expect(find.text('Continue Learning'), findsOneWidget);
+      expect(find.text('Explore Concepts'), findsOneWidget);
     });
 
     testWidgets('renders knowledge overview', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
+          overrides: [
+            allConceptsProvider.overrideWith((ref) async => testConcepts),
+          ],
           child: const MaterialApp(home: HomeScreen()),
         ),
       );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/data/providers/concept_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -22,11 +24,11 @@ class HomeScreen extends ConsumerWidget {
                 const _DailyJourney(),
                 const SizedBox(height: 32),
                 Text(
-                  'Continue Learning',
+                  'Explore Concepts',
                   style: theme.textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 12),
-                const _ContinueLearning(),
+                const _ExploreConcepts(),
                 const SizedBox(height: 32),
                 Text(
                   'Your Knowledge',
@@ -70,12 +72,15 @@ class _GreetingHeader extends ConsumerWidget {
             ],
           ),
         ),
-        CircleAvatar(
-          radius: 24,
-          backgroundColor: theme.colorScheme.primary,
-          child: Text(
-            (profile ?? 'L')[0],
-            style: TextStyle(color: theme.colorScheme.onPrimary),
+        GestureDetector(
+          onTap: () => context.go('/profiles'),
+          child: CircleAvatar(
+            radius: 24,
+            backgroundColor: theme.colorScheme.primary,
+            child: Text(
+              (profile ?? 'L')[0],
+              style: TextStyle(color: theme.colorScheme.onPrimary),
+            ),
           ),
         ),
       ],
@@ -173,50 +178,92 @@ class _JourneyItem extends StatelessWidget {
   }
 }
 
-class _ContinueLearning extends StatelessWidget {
-  const _ContinueLearning();
+class _ExploreConcepts extends ConsumerWidget {
+  const _ExploreConcepts();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final conceptsAsync = ref.watch(allConceptsProvider);
 
-    return SizedBox(
-      height: 160,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 5,
-        itemBuilder: (context, index) {
-          return Container(
-            width: 140,
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.colorScheme.outline),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 60,
+    return conceptsAsync.when(
+      data: (concepts) {
+        if (concepts.isEmpty) {
+          return const SizedBox(
+            height: 100,
+            child: Center(child: Text('No concepts available')),
+          );
+        }
+        final display = concepts.take(6).toList();
+        return SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: display.length,
+            itemBuilder: (context, index) {
+              final concept = display[index];
+              return GestureDetector(
+                onTap: () => context.go('/concept/${concept.slug}'),
+                child: Container(
+                  width: 150,
+                  margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.colorScheme.outline),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 60,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Icon(Icons.auto_stories,
+                              color: theme.colorScheme.primary),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        concept.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: 0.3 + (index * 0.1),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        concept.difficulty,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  'Understanding AI',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 4),
-                const LinearProgressIndicator(value: 0.68),
-              ],
-            ),
-          );
-        },
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 100,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => SizedBox(
+        height: 100,
+        child: Center(child: Text('$e')),
       ),
     );
   }
