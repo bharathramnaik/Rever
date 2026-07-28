@@ -4,7 +4,7 @@ import 'package:rever/src/data/models/learning_object_model.dart';
 import 'package:rever/src/data/models/profile_model.dart';
 import 'package:rever/src/data/models/streak_model.dart';
 
-final testTopic = TopicModel(
+const testTopic = TopicModel(
   id: 't0000001-0000-0000-0000-000000000001',
   name: 'Technology',
   slug: 'technology',
@@ -86,7 +86,7 @@ final testLearningObjectQuiz = LearningObjectModel(
 
 final testLearningObjects = [testLearningObjectCard, testLearningObjectQuiz];
 
-final testProfile = ProfileModel(
+const testProfile = ProfileModel(
   id: 'p0000001-0000-0000-0000-000000000001',
   accountId: 'a0000001-0000-0000-0000-000000000001',
   name: 'Test User',

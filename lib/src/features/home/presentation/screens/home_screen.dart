@@ -10,15 +10,13 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
+    return const Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            const _FeedHeader(),
-            const SliverToBoxAdapter(child: SizedBox(height: 16)),
-            const _FeedContent(),
+            _FeedHeader(),
+            SliverToBoxAdapter(child: SizedBox(height: 16)),
+            _FeedContent(),
           ],
         ),
       ),
@@ -144,19 +142,19 @@ class _DiscoveryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.auto_stories, color: Colors.white, size: 24),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text('Today', style: TextStyle(color: Colors.white70)),
             ],
           ),
           const SizedBox(height: 12),
           Text(item.title, style: theme.textTheme.headlineMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 4),
-          Text(item.subtitle ?? '', style: TextStyle(color: Colors.white70)),
+          Text(item.subtitle ?? '', style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          LinearProgressIndicator(value: 0.3, backgroundColor: Colors.white30, color: Colors.white),
+          const LinearProgressIndicator(value: 0.3, backgroundColor: Colors.white30, color: Colors.white),
         ],
       ),
     );
@@ -295,7 +293,7 @@ class _ChallengeCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.local_fire_department, color: Colors.orange, size: 32),
+          const Icon(Icons.local_fire_department, color: Colors.orange, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

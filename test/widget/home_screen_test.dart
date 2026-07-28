@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/features/home/presentation/screens/home_screen.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/providers/feed_provider.dart';
-import '../helpers/test_data.dart';
-
 class _BharathNotifier extends ActiveProfileIdNotifier {
   @override
   String? build() => 'Bharath';
@@ -42,8 +40,8 @@ void main() {
 
     testWidgets('renders feed section', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: HomeScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: HomeScreen()),
         ),
       );
 

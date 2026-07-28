@@ -152,7 +152,7 @@ class _SourcesPreview extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox(height: 100),
-      error: (_, __) => const SizedBox(height: 100),
+      error: (_, _) => const SizedBox(height: 100),
     );
   }
 }

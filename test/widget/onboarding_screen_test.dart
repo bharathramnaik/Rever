@@ -7,8 +7,8 @@ void main() {
   group('OnboardingScreen', () {
     testWidgets('renders onboarding pages', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: OnboardingScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: OnboardingScreen()),
         ),
       );
 
@@ -18,8 +18,8 @@ void main() {
 
     testWidgets('navigates through pages', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: OnboardingScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: OnboardingScreen()),
         ),
       );
 
@@ -33,8 +33,8 @@ void main() {
 
     testWidgets('shows page indicators', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: OnboardingScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: OnboardingScreen()),
         ),
       );
 

@@ -7,8 +7,8 @@ void main() {
   group('ProfileSwitchScreen', () {
     testWidgets('renders all profiles', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: ProfileSwitchScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: ProfileSwitchScreen()),
         ),
       );
 
@@ -20,8 +20,8 @@ void main() {
 
     testWidgets('renders add profile button', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: ProfileSwitchScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: ProfileSwitchScreen()),
         ),
       );
 
@@ -30,8 +30,8 @@ void main() {
 
     testWidgets('renders profile type labels', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(home: ProfileSwitchScreen()),
+        const ProviderScope(
+          child: MaterialApp(home: ProfileSwitchScreen()),
         ),
       );
 
