@@ -11,7 +11,7 @@ Future<void> main() async {
 
   await Supabase.initialize(
     url: AppEnvironment.supabaseUrl,
-    anonKey: AppEnvironment.supabaseAnonKey,
+    publishableKey: AppEnvironment.supabasePublishableKey,
   );
 
   // Firebase is optional — initializes only if google-services files exist
