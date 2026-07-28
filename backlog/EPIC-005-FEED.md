@@ -1,34 +1,35 @@
 # EPIC-005: Content Feed & Discovery
 
 ## Status
-Pending
+In Progress
 
 ## Stories
 
-### STORY-005.1: Topic-based feed
-- Feed screen showing concepts from followed topics
-- Swipeable cards (vertical)
-- Card UI: title, image, summary, difficulty badge
-- Like/reaction buttons
+### STORY-005.1: Topic-based browse
+- [x] Explore screen with topic grid (8+ topics)
+- [x] Topic → Concept list screen (TopicScreen)
+- [x] Card UI: title, summary, difficulty badge, time estimate
+- [x] Concept detail screen (ConceptScreen)
+- [x] Learning objects displayed per concept
 
 ### STORY-005.2: Daily picks
-- Curated daily selection of concepts
-- Personalized based on interests and history
-- "Lucky pick" random discovery
+- [ ] Curated daily selection of concepts
+- [ ] Personalized based on interests and history
+- [ ] "Lucky pick" random discovery
 
 ### STORY-005.3: Concept detail view
-- Rich concept page
-- Learning object tabs (Read, Visual, Quiz, AI)
-- Related concepts section
-- Save/bookmark action
+- [x] Rich concept page with summary
+- [x] Learning objects tabs/sections
+- [ ] Related concepts section
+- [ ] Save/bookmark action
 
 ### STORY-005.4: Feed personalization
-- Interest-based content ranking
-- Hide/not-interested feedback
-- Load more / infinite scroll
+- [ ] Interest-based content ranking
+- [ ] Hide/not-interested feedback
+- [ ] Load more / infinite scroll
 
 ## Acceptance Criteria
-- [ ] Feed shows concepts from selected topics
-- [ ] Cards are swipable
-- [ ] Concept detail loads all learning modes
-- [ ] Personalization improves over time
+- [x] Explore shows topics with concept grid
+- [x] Tapping topic shows its concepts
+- [x] Concept detail loads learning objects
+- [ ] Feed personalization improves over time

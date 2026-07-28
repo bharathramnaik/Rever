@@ -310,5 +310,7 @@ CREATE POLICY "ai_sessions_access" ON ai_sessions
 -- Public knowledge tables (read-only for all authenticated users)
 CREATE POLICY "topics_read" ON topics FOR SELECT USING (true);
 CREATE POLICY "concepts_read" ON concepts FOR SELECT USING (true);
+CREATE POLICY "concept_topics_read" ON concept_topics FOR SELECT USING (true);
+CREATE POLICY "concept_relationships_read" ON concept_relationships FOR SELECT USING (true);
 CREATE POLICY "learning_objects_read" ON learning_objects FOR SELECT USING (true);
 CREATE POLICY "sources_read" ON sources FOR SELECT USING (true);

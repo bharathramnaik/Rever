@@ -32,8 +32,8 @@ Rever/
 - `flutter test test/widget/` — Run only widget tests
 - `flutter test test/integration/` — Run only integration tests
 - `flutter test --coverage` — Generate coverage report
-- `flutter run` — Run on connected device
-- `dart run build_runner build` — Generate code (Riverpod, Freezed)
+- `flutter run -d chrome` — Run on Chrome
+- `flutter build web --base-href=/Rever/` — Production build for GitHub Pages
 
 ## Testing Conventions
 - **Model tests**: Pure unit tests — no mocking needed, test `fromJson()` parsing and edge cases
@@ -63,3 +63,10 @@ Rever/
 - All profile-scoped data includes profile_id filter
 - RLS policies enforce profile isolation
 - **No OpenAI API key yet** — AI tutor deferred to Phase 3
+
+## Current State (July 2026)
+- **Phase 1 Foundation — Complete**: Flutter scaffold, Supabase (schema, seed, RLS), theme, router, data layer, 51 tests
+- **Deployed at**: https://bharathramnaik.github.io/Rever/
+- **Working**: Onboarding (4 swipeable screens), Multi-profile switching (Netflix-style), Explore (topic grid), Topic → Concepts, Concept detail with learning objects
+- **Pending Phase 1**: Auth (email/Google sign-up), Interest selection during onboarding, Daily goal setting, Full profile creation, Search, Library save/bookmark, Daily journey, Reading streak
+- **Blocked**: AI Tutor (needs OpenAI API key — Phase 3)
