@@ -41,3 +41,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Temp files
+*.zip
+*.tmp
+__pycache__/
+*.pyc
+.env
+.env.local

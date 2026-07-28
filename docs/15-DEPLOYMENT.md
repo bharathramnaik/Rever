@@ -6,7 +6,7 @@
 |-----------|----------|-------|
 | Mobile app | App Store + Play Store | Flutter build |
 | Backend | Supabase (managed) | PostgreSQL + Auth + Storage |
-| AI API | Railway / Render | Python FastAPI |
+| AI API | Render | Python FastAPI |
 | Admin panel | Vercel | Next.js |
 | CDN | Cloudflare | Images, animations |
 | Analytics | PostHog Cloud | Self-host later |
@@ -17,9 +17,9 @@
 
 | Environment | Backend | AI | Notes |
 |-------------|---------|-----|-------|
-| Development | Local Supabase | Local | Docker compose |
-| Staging | Supabase staging | Railway staging | For QA |
-| Production | Supabase prod | Railway prod | Live |
+| Development | Local Supabase | Local Render dev | Docker compose |
+| Staging | Supabase staging | Render staging | For QA |
+| Production | Supabase prod | Render prod | Live |
 
 ## Deployment Flow
 

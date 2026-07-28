@@ -7,6 +7,7 @@
 | 2026-07-28 | Riverpod over Bloc | Less boilerplate, better composition, testable |
 | 2026-07-28 | PostgreSQL + pgvector | Single database for relational + vector, no extra infra |
 | 2026-07-28 | Python AI layer over JS | Better ML ecosystem, easier LLM integration |
+| 2026-07-28 | Render over Railway | User preference, similar free tier, wider adoption |
 | 2026-07-28 | Drift/SQLite for local | Offline-first without complexity of sync engines |
 | 2026-07-28 | Visual spec format (no video gen) | Dramatically cheaper than generating videos per concept |
 | 2026-07-28 | Multi-profile at account level | Essential for family use case, Netflix-style UX |
