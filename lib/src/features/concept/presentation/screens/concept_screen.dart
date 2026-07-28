@@ -12,7 +12,7 @@ class ConceptScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Loading...'),
+        title: const Text('Loading...'),
         actions: [
           IconButton(icon: const Icon(Icons.bookmark_outline), onPressed: () {}),
           IconButton(icon: const Icon(Icons.share), onPressed: () {}),
@@ -26,9 +26,9 @@ class ConceptScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Chip(label: const Text('AI'), visualDensity: VisualDensity.compact),
+              const Chip(label: Text('AI'), visualDensity: VisualDensity.compact),
               const SizedBox(width: 8),
-              Chip(label: const Text('Beginner'), visualDensity: VisualDensity.compact),
+              const Chip(label: Text('Beginner'), visualDensity: VisualDensity.compact),
               const Spacer(),
               Text('5 min read', style: theme.textTheme.bodyMedium),
             ],
@@ -53,11 +53,11 @@ class ConceptScreen extends ConsumerWidget {
           Container(
             height: 200,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.05),
+              color: theme.colorScheme.primary.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
-              child: Icon(Icons.image, size: 48, color: theme.colorScheme.primary.withOpacity(0.3)),
+              child: Icon(Icons.image, size: 48, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
             ),
           ),
           const SizedBox(height: 24),
@@ -65,15 +65,15 @@ class ConceptScreen extends ConsumerWidget {
           // Key points
           Text('Key Points', style: theme.textTheme.headlineMedium),
           const SizedBox(height: 12),
-          _KeyPoint(
+          const _KeyPoint(
             number: '1',
             text: 'Transformers are a neural network architecture introduced in 2017',
           ),
-          _KeyPoint(
+          const _KeyPoint(
             number: '2',
             text: 'They use self-attention to process sequential data in parallel',
           ),
-          _KeyPoint(
+          const _KeyPoint(
             number: '3',
             text: 'They power modern AI systems like GPT, BERT, and Claude',
           ),
@@ -163,7 +163,7 @@ class _KeyPoint extends StatelessWidget {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

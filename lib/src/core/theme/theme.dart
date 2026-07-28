@@ -34,7 +34,7 @@ class ReverTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colors,
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -45,7 +45,7 @@ class ReverTheme {
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         backgroundColor: colors.surface,
-        indicatorColor: colors.primary.withOpacity(0.15),
+        indicatorColor: colors.primary.withValues(alpha: 0.15),
       ),
     );
   }

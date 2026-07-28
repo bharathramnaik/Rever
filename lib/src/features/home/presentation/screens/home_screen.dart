@@ -100,22 +100,22 @@ class _DailyJourney extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _JourneyItem(
+          const _JourneyItem(
             icon: Icons.auto_stories,
             text: 'Learn: How transformers work',
             duration: '2 min',
           ),
-          _JourneyItem(
+          const _JourneyItem(
             icon: Icons.explore,
             text: 'Explore: Transformer visual map',
             duration: '3 min',
           ),
-          _JourneyItem(
+          const _JourneyItem(
             icon: Icons.quiz,
             text: 'Quiz: Test yesterday\'s concepts',
             duration: '2 min',
           ),
-          _JourneyItem(
+          const _JourneyItem(
             icon: Icons.replay,
             text: 'Remember: 3 concepts due',
             duration: '2 min',
@@ -123,7 +123,7 @@ class _DailyJourney extends StatelessWidget {
           const SizedBox(height: 16),
           LinearProgressIndicator(
             value: 0.3,
-            backgroundColor: Colors.white.withOpacity(0.3),
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
             color: Colors.white,
           ),
         ],
@@ -154,7 +154,7 @@ class _JourneyItem extends StatelessWidget {
           Expanded(child: Text(text, style: const TextStyle(color: Colors.white))),
           Text(
             duration,
-            style: TextStyle(color: Colors.white.withOpacity(0.8)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
           ),
         ],
       ),
@@ -190,7 +190,7 @@ class _ContinueLearning extends StatelessWidget {
                 Container(
                   height: 60,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
@@ -200,7 +200,7 @@ class _ContinueLearning extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
-                LinearProgressIndicator(value: 0.68),
+                const LinearProgressIndicator(value: 0.68),
               ],
             ),
           );

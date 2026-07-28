@@ -1,3 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final activeProfileIdProvider = StateProvider<String?>((ref) => null);
+class ActiveProfileIdNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? id) => state = id;
+}
+
+final activeProfileIdProvider =
+    NotifierProvider<ActiveProfileIdNotifier, String?>(
+  ActiveProfileIdNotifier.new,
+);

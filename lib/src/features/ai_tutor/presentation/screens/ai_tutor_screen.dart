@@ -20,7 +20,7 @@ class AiTutorScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -36,7 +36,7 @@ class AiTutorScreen extends ConsumerWidget {
               Text(
                 'Ask me anything about what you\'re learning',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 24),
@@ -75,7 +75,7 @@ class AiTutorScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: TextField(
                         decoration: InputDecoration(
                           hintText: 'Ask AI Tutor...',

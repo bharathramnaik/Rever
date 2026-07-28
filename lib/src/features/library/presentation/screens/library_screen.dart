@@ -17,16 +17,16 @@ class LibraryScreen extends ConsumerWidget {
             children: [
               Text('Your Library', style: theme.textTheme.displayLarge),
               const SizedBox(height: 24),
-              _LibraryTab(label: 'All', count: 12),
-              _LibraryTab(label: 'Saved', count: 8),
-              _LibraryTab(label: 'Notes', count: 3),
-              _LibraryTab(label: 'History', count: 47),
+              const _LibraryTab(label: 'All', count: 12),
+              const _LibraryTab(label: 'Saved', count: 8),
+              const _LibraryTab(label: 'Notes', count: 3),
+              const _LibraryTab(label: 'History', count: 47),
               const Spacer(),
               Center(
                 child: Text(
                   'Start learning to build your library',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ),

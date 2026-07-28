@@ -24,7 +24,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
               Text(
                 'Select a profile to continue',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 32),
@@ -100,7 +100,7 @@ class _ProfileCard extends StatelessWidget {
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
             radius: 28,
-            backgroundColor: color.withOpacity(0.1),
+            backgroundColor: color.withValues(alpha: 0.1),
             child: Icon(icon, color: color, size: 28),
           ),
         title: Text(name, style: theme.textTheme.headlineMedium),

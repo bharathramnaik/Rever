@@ -128,7 +128,7 @@ class _OnboardingPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(icon, size: 80, color: theme.colorScheme.primary),
@@ -143,7 +143,7 @@ class _OnboardingPage extends StatelessWidget {
           Text(
             subtitle,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),
