@@ -10,3 +10,8 @@ final topicRepositoryProvider = Provider<TopicRepository>((ref) {
 final topicsProvider = FutureProvider<List<TopicModel>>((ref) {
   return ref.watch(topicRepositoryProvider).fetchAll();
 });
+
+final topicBySlugProvider =
+    FutureProvider.family<TopicModel?, String>((ref, slug) {
+  return ref.watch(topicRepositoryProvider).fetchBySlug(slug);
+});

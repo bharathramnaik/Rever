@@ -11,7 +11,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +63,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(height: 32),
               TextButton(
                 onPressed: () {},
                 child: const Text('Account Settings'),

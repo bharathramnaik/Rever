@@ -6,6 +6,7 @@ import '../features/home/presentation/screens/home_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/profile/presentation/screens/profile_switch_screen.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
+import '../features/explore/presentation/screens/topic_screen.dart';
 import '../features/library/presentation/screens/library_screen.dart';
 import '../features/ai_tutor/presentation/screens/ai_tutor_screen.dart';
 import '../features/concept/presentation/screens/concept_screen.dart';
@@ -42,6 +43,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AiTutorScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/topic/:slug',
+        builder: (context, state) => TopicScreen(
+          slug: state.pathParameters['slug']!,
+        ),
       ),
       GoRoute(
         path: '/concept/:id',

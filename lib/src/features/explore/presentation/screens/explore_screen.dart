@@ -108,7 +108,7 @@ class _TopicCard extends ConsumerWidget {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => context.go('/concept/${topic.slug}'),
+        onTap: () => context.go('/topic/${topic.slug}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
