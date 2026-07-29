@@ -47,13 +47,18 @@ class _InterestSelectionScreenState
     final topicsAsync = ref.watch(topicsProvider);
 
 
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/onboarding');
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Text(
                 'What interests you?',
                 style: theme.textTheme.displayLarge,
@@ -140,6 +145,7 @@ class _InterestSelectionScreenState
             ],
           ),
         ),
+      ),
       ),
     );
   }

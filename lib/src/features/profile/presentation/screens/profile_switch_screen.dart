@@ -12,78 +12,84 @@ class ProfileSwitchScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final profilesAsync = ref.watch(profilesProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Who\'s learning?',
-                style: theme.textTheme.displayLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Select a profile to continue',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/interests');
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Who\'s learning?',
+                  style: theme.textTheme.displayLarge,
                 ),
-              ),
-              const SizedBox(height: 32),
-              profilesAsync.when(
-                data: (profiles) {
-                  if (profiles.isEmpty) {
-                    return _EmptyProfiles(theme: theme);
-                  }
-                  return Column(
-                    children: [
-                      ...profiles.map((profile) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _ProfileCard(
-                              profile: profile,
-                              onTap: () {
-                                ref
-                                    .read(activeProfileIdProvider.notifier)
-                                    .select(profile.id);
-                                context.go('/home');
-                              },
-                            ),
-                          )),
-                      OutlinedButton.icon(
-                        onPressed: () => _showAddProfileDialog(context, ref),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Profile'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 64),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(64),
-                    child: CircularProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  'Select a profile to continue',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
-                error: (e, _) => _FallbackProfiles(
-                  ref: ref,
-                  onSelect: (id) {
-                    ref.read(activeProfileIdProvider.notifier).select(id);
-                    context.go('/home');
+                const SizedBox(height: 32),
+                profilesAsync.when(
+                  data: (profiles) {
+                    if (profiles.isEmpty) {
+                      return _EmptyProfiles(theme: theme);
+                    }
+                    return Column(
+                      children: [
+                        ...profiles.map((profile) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _ProfileCard(
+                                profile: profile,
+                                onTap: () {
+                                  ref
+                                      .read(activeProfileIdProvider.notifier)
+                                      .select(profile.id);
+                                  context.go('/home');
+                                },
+                              ),
+                            )),
+                        OutlinedButton.icon(
+                          onPressed: () => _showAddProfileDialog(context, ref),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Profile'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 64),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
                   },
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(64),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (e, _) => _FallbackProfiles(
+                    ref: ref,
+                    onSelect: (id) {
+                      ref.read(activeProfileIdProvider.notifier).select(id);
+                      context.go('/home');
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Account Settings'),
-              ),
-            ],
+                const SizedBox(height: 32),
+                TextButton(
+                  onPressed: () => context.go('/auth'),
+                  child: const Text('Account Settings'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -169,12 +175,7 @@ class _FallbackProfiles extends StatelessWidget {
                   type: p.type,
                   icon: p.icon,
                   color: p.color,
-                  onTap: () {
-                    ref
-                        .read(activeProfileIdProvider.notifier)
-                        .select(p.name);
-                    onSelect(p.name);
-                  },
+                  onTap: () => onSelect(p.name),
                 ),
               ))
           .toList(),
