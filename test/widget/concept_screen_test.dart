@@ -55,7 +55,7 @@ void main() {
       await tester.tap(find.text('Master'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Quick Quiz'), findsOneWidget);
+      expect(find.text('Quiz'), findsOneWidget);
     });
 
     testWidgets('shows difficulty chip', (tester) async {

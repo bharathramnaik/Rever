@@ -47,12 +47,16 @@ void main() {
       // Should start at onboarding
       expect(find.text('Learn Anything'), findsOneWidget);
 
-      // Navigate through onboarding to profiles
+      // Navigate through onboarding to interests
       for (int i = 0; i < 3; i++) {
         await tester.tap(find.text('Next'));
         await tester.pumpAndSettle();
       }
       await tester.tap(find.text('Get Started'));
+      await tester.pumpAndSettle();
+
+      // Skip interest selection to reach profiles
+      await tester.tap(find.text('Skip for now'));
       await tester.pumpAndSettle();
 
       // Should show profile selection
@@ -62,8 +66,8 @@ void main() {
       await tester.tap(find.text('Bharath'));
       await tester.pumpAndSettle();
 
-      // Should be on home screen (greeting or profile name)
-      expect(find.text('Learner'), findsOneWidget);
+      // Should be on home screen with profile name
+      expect(find.text('Bharath'), findsOneWidget);
     });
 
     testWidgets('explore -> concept navigation works', (tester) async {
