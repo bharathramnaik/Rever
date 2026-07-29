@@ -57,7 +57,7 @@ class LoginScreen extends ConsumerWidget {
                           await supabase.auth.signInWithOAuth(
                             OAuthProvider.google,
                             redirectTo: kIsWeb
-                                ? null
+                                ? Uri.base.toString()
                                 : 'com.rever.rever://callback',
                           );
                         } catch (e) {
