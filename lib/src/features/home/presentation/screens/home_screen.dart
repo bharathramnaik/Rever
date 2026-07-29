@@ -31,8 +31,19 @@ class _FeedHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-    final profile = ref.watch(activeProfileIdProvider);
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 18
+            ? 'Good afternoon'
+            : 'Good evening';
+    final profileId = ref.watch(activeProfileIdProvider);
+    final profileAsync = ref.watch(activeProfileProvider);
+
+    final name = profileAsync.when(
+      data: (p) => p?.name ?? profileId ?? 'Learner',
+      loading: () => profileId ?? 'Learner',
+      error: (_, __) => profileId ?? 'Learner',
+    );
 
     return SliverAppBar(
       floating: true,
@@ -41,7 +52,7 @@ class _FeedHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(greeting, style: theme.textTheme.bodySmall),
-          Text(profile ?? 'Learner', style: theme.textTheme.titleLarge),
+          Text(name, style: theme.textTheme.titleLarge),
         ],
       ),
       actions: [
@@ -53,7 +64,7 @@ class _FeedHeader extends ConsumerWidget {
               radius: 20,
               backgroundColor: theme.colorScheme.primary,
               child: Text(
-                (profile ?? 'L')[0].toUpperCase(),
+                name[0].toUpperCase(),
                 style: TextStyle(color: theme.colorScheme.onPrimary),
               ),
             ),
@@ -111,6 +122,14 @@ class _FeedCard extends ConsumerWidget {
         return _QuestionCard(item: item, theme: theme);
       case FeedItemType.challenge:
         return _ChallengeCard(item: item, theme: theme);
+      case FeedItemType.review:
+        return _ReviewCard(item: item, theme: theme);
+      case FeedItemType.story:
+        return _StoryCard(item: item, theme: theme);
+      case FeedItemType.visual:
+        return _VisualCard(item: item, theme: theme);
+      case FeedItemType.learningPath:
+        return _LearningPathCard(item: item, theme: theme);
       default:
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -150,11 +169,17 @@ class _DiscoveryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(item.title, style: theme.textTheme.headlineMedium?.copyWith(color: Colors.white)),
+          Text(item.title,
+              style: theme.textTheme.headlineMedium
+                  ?.copyWith(color: Colors.white)),
           const SizedBox(height: 4),
-          Text(item.subtitle ?? '', style: const TextStyle(color: Colors.white70)),
+          Text(item.subtitle ?? '',
+              style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 16),
-          const LinearProgressIndicator(value: 0.3, backgroundColor: Colors.white30, color: Colors.white),
+          const LinearProgressIndicator(
+              value: 0.3,
+              backgroundColor: Colors.white30,
+              color: Colors.white),
         ],
       ),
     );
@@ -177,12 +202,16 @@ class _InsightCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
-          width: 48, height: 48,
-          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12)),
           child: Icon(Icons.explore, color: color),
         ),
         title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle: Text(item.subtitle ?? '',
+            maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           final slug = item.metadata?['slug'] as String?;
@@ -206,7 +235,8 @@ class _ConceptFeedCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
@@ -218,17 +248,21 @@ class _ConceptFeedCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (item.subtitle != null)
-              Text(item.subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(item.subtitle!,
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Row(
               children: [
                 Chip(
-                  label: Text(item.metadata?['difficulty'] as String? ?? 'beginner', style: const TextStyle(fontSize: 10)),
+                  label: Text(
+                      item.metadata?['difficulty'] as String? ?? 'beginner',
+                      style: const TextStyle(fontSize: 10)),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
                 if (item.metadata?['minutes'] != null)
-                  Text('${item.metadata!['minutes']} min', style: theme.textTheme.bodySmall),
+                  Text('${item.metadata!['minutes']} min',
+                      style: theme.textTheme.bodySmall),
               ],
             ),
           ],
@@ -257,12 +291,14 @@ class _QuestionCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
-          width: 48, height: 48,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             color: theme.colorScheme.secondary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(Icons.help_outline, color: theme.colorScheme.secondary),
+          child:
+              Icon(Icons.help_outline, color: theme.colorScheme.secondary),
         ),
         title: Text(item.title, style: theme.textTheme.titleMedium),
         subtitle: Text(item.subtitle ?? ''),
@@ -288,12 +324,14 @@ class _ChallengeCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 6, 16, 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
-          const Icon(Icons.local_fire_department, color: Colors.orange, size: 32),
+          const Icon(Icons.local_fire_department,
+              color: Colors.orange, size: 32),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -304,7 +342,158 @@ class _ChallengeCard extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+          Icon(Icons.arrow_forward_ios,
+              size: 16,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Review reminder card — concepts due for spaced repetition review
+class _ReviewCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _ReviewCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: Colors.amber.withValues(alpha: 0.08),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.replay, color: Colors.amber),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Text(item.subtitle ?? 'Time to review and strengthen your memory'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['concept_slug'] as String?;
+          if (slug != null) context.go('/concept/$slug');
+        },
+      ),
+    );
+  }
+}
+
+/// Story card — narrative-style learning content
+class _StoryCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _StoryCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE040FB).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.menu_book, color: Color(0xFFE040FB)),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['slug'] as String?;
+          if (slug != null) context.go('/concept/$slug');
+        },
+      ),
+    );
+  }
+}
+
+/// Visual card — diagram/flowchart/timeline preview
+class _VisualCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _VisualCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF00BCD4).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(Icons.bubble_chart, color: Color(0xFF00BCD4)),
+        ),
+        title: Text(item.title, style: theme.textTheme.titleMedium),
+        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final slug = item.metadata?['slug'] as String?;
+          if (slug != null) context.go('/concept/$slug');
+        },
+      ),
+    );
+  }
+}
+
+/// Learning path suggestion card
+class _LearningPathCard extends StatelessWidget {
+  final FeedItemModel item;
+  final ThemeData theme;
+
+  const _LearningPathCard({required this.item, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.secondary.withValues(alpha: 0.15),
+            theme.colorScheme.primary.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.route, color: theme.colorScheme.secondary, size: 32),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: theme.textTheme.titleMedium),
+                Text(item.subtitle ?? '', style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios,
+              size: 16,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
         ],
       ),
     );

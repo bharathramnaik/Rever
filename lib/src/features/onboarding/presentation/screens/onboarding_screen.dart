@@ -89,7 +89,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         curve: Curves.easeInOut,
                       );
                     } else {
-                      context.go('/profiles');
+                      context.go('/interests');
                     }
                   },
                   child: Text(

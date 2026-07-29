@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/features/home/presentation/screens/home_screen.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/providers/feed_provider.dart';
-class _BharathNotifier extends ActiveProfileIdNotifier {
+class _BharathNotifier extends ActiveProfileNotifier {
   @override
   String? build() => 'Bharath';
 }

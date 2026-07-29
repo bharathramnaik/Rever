@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:rever/src/data/models/topic_model.dart';
 import 'package:rever/src/data/providers/topic_providers.dart';
 import 'package:rever/src/data/providers/source_providers.dart';
+import 'package:rever/src/data/providers/search_provider.dart';
 
 IconData _iconFromName(String? name) {
   return switch (name) {
@@ -17,8 +18,8 @@ IconData _iconFromName(String? name) {
     'rocket_launch' => Icons.rocket_launch,
     'palette' => Icons.palette,
     'favorite' => Icons.favorite,
-    'nature_people' => Icons.nature,
-    'engineering' => Icons.build,
+    'nature_people' || 'forest' => Icons.nature,
+    'engineering' || 'precision_manufacturing' => Icons.build,
     _ => Icons.explore,
   };
 }
@@ -32,13 +33,30 @@ Color _colorFromString(String? color) {
   return const Color(0xFF6C63FF);
 }
 
-class ExploreScreen extends ConsumerWidget {
+class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends ConsumerState<ExploreScreen> {
+  final _searchController = TextEditingController();
+  final _focusNode = FocusNode();
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final topicsAsync = ref.watch(topicsProvider);
+    final searchQuery = ref.watch(searchQueryProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -46,66 +64,206 @@ class ExploreScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           child: SingleChildScrollView(
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'What do you want to learn?',
-                style: theme.textTheme.displayLarge,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search any topic...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: theme.colorScheme.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(color: theme.colorScheme.outline),
-                  ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What do you want to learn?',
+                  style: theme.textTheme.displayLarge,
                 ),
-              ),
-              Text('Topics', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 12),
-              topicsAsync.when(
-                data: (topics) => GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 1.5,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                  ),
-                  itemCount: topics.length,
-                  itemBuilder: (context, index) {
-                    final topic = topics[index];
-                    return _TopicCard(topic: topic);
+                const SizedBox(height: 16),
+                // Functional search field
+                TextField(
+                  controller: _searchController,
+                  focusNode: _focusNode,
+                  onChanged: (value) {
+                    ref.read(searchQueryProvider.notifier).update(value);
+                    setState(() => _isSearching = value.trim().isNotEmpty);
                   },
-                ),
-                loading: () => const SizedBox(
-                    height: 200, child: Center(child: CircularProgressIndicator())),
-                error: (e, _) => Center(child: Text('$e')),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Sources', style: theme.textTheme.headlineMedium),
-                  TextButton(
-                    onPressed: () => context.go('/sources'),
-                    child: const Text('See all'),
+                  decoration: InputDecoration(
+                    hintText: 'Search topics, concepts, sources...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _isSearching
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref.read(searchQueryProvider.notifier).clear();
+                              setState(() => _isSearching = false);
+                              _focusNode.unfocus();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: theme.colorScheme.outline),
+                    ),
                   ),
+                ),
+                const SizedBox(height: 16),
+
+                // Show search results or browse content
+                if (_isSearching && searchQuery.trim().isNotEmpty)
+                  _SearchResultsView()
+                else ...[
+                  Text('Topics', style: theme.textTheme.headlineMedium),
+                  const SizedBox(height: 12),
+                  topicsAsync.when(
+                    data: (topics) => GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.5,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                      ),
+                      itemCount: topics.length,
+                      itemBuilder: (context, index) {
+                        final topic = topics[index];
+                        return _TopicCard(topic: topic);
+                      },
+                    ),
+                    loading: () => const SizedBox(
+                        height: 200,
+                        child: Center(child: CircularProgressIndicator())),
+                    error: (e, _) => Center(child: Text('$e')),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Sources', style: theme.textTheme.headlineMedium),
+                      TextButton(
+                        onPressed: () => context.go('/sources'),
+                        child: const Text('See all'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const _SourcesPreview(),
                 ],
-              ),
-              const SizedBox(height: 12),
-              const _SourcesPreview(),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Live search results displayed below the search field
+class _SearchResultsView extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final resultsAsync = ref.watch(searchResultsProvider);
+
+    return resultsAsync.when(
+      data: (results) {
+        if (results.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.search_off,
+                      size: 48,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                  const SizedBox(height: 12),
+                  Text('No results found',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      )),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${results.totalCount} results',
+                style: theme.textTheme.bodySmall),
+            const SizedBox(height: 8),
+
+            // Topics
+            if (results.topics.isNotEmpty) ...[
+              Text('Topics', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...results.topics.map((t) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(_iconFromName(t.icon),
+                          color: _colorFromString(t.color)),
+                      title: Text(t.name),
+                      subtitle:
+                          t.description != null ? Text(t.description!) : null,
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.go('/topic/${t.slug}'),
+                    ),
+                  )),
+              const SizedBox(height: 16),
+            ],
+
+            // Concepts
+            if (results.concepts.isNotEmpty) ...[
+              Text('Concepts', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...results.concepts.map((c) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(Icons.auto_stories,
+                          color: theme.colorScheme.primary),
+                      title: Text(c.title),
+                      subtitle: c.summary != null
+                          ? Text(c.summary!,
+                              maxLines: 1, overflow: TextOverflow.ellipsis)
+                          : null,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Chip(
+                            label: Text(c.difficulty,
+                                style: const TextStyle(fontSize: 10)),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                      onTap: () => context.go('/concept/${c.slug}'),
+                    ),
+                  )),
+              const SizedBox(height: 16),
+            ],
+
+            // Sources
+            if (results.sources.isNotEmpty) ...[
+              Text('Sources', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...results.sources.map((s) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(Icons.menu_book,
+                          color: theme.colorScheme.secondary),
+                      title: Text(s.title),
+                      subtitle: Text(s.sourceType ?? 'Source'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {},
+                    ),
+                  )),
+            ],
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
       ),
+      error: (e, _) => Center(child: Text('Search error: $e')),
     );
   }
 }
@@ -142,7 +300,9 @@ class _SourcesPreview extends ConsumerWidget {
                   children: [
                     Icon(Icons.menu_book, color: theme.colorScheme.primary),
                     const Spacer(),
-                    Text(s.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    Text(s.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodySmall),
                   ],
                 ),
@@ -152,7 +312,7 @@ class _SourcesPreview extends ConsumerWidget {
         );
       },
       loading: () => const SizedBox(height: 100),
-      error: (_, _) => const SizedBox(height: 100),
+      error: (_, __) => const SizedBox(height: 100),
     );
   }
 }

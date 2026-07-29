@@ -494,3 +494,12 @@ INSERT INTO learning_objects (concept_id, object_type, title, content, difficult
     ('b0000001-0012-0000-0000-000000000002', 'quiz', 'Circuits Quiz',
      '{"questions": [{"question": "What does Ohm''s Law state?", "options": ["V = I × R", "V = I + R", "V = I / R", "V = R / I"], "correct_index": 0}, {"question": "In a parallel circuit, what is the same across all branches?", "options": ["Current", "Resistance", "Voltage", "Power"], "correct_index": 2}]}',
      'beginner', 90, null);
+
+-- ==================== CONCEPT RELATIONSHIPS ====================
+
+INSERT INTO concept_relationships (source_concept_id, target_concept_id, relationship_type) VALUES
+    ('b0000001-0001-0000-0000-000000000002', 'b0000001-0001-0000-0000-000000000001', 'prerequisite_of'),
+    ('b0000001-0001-0000-0000-000000000003', 'b0000001-0001-0000-0000-000000000004', 'related_to'),
+    ('b0000001-0002-0000-0000-000000000001', 'b0000001-0002-0000-0000-000000000002', 'related_to')
+ON CONFLICT DO NOTHING;
+
