@@ -69,7 +69,7 @@ class LoginScreen extends ConsumerWidget {
                     ),
               const SizedBox(height: 16),
               FilledButton.tonalIcon(
-                onPressed: () {},
+                onPressed: () => _showEmailAuthDialog(context, ref),
                 icon: const Icon(Icons.email_outlined),
                 label: const Text('Continue with Email'),
               ),
@@ -79,6 +79,83 @@ class LoginScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+void _showEmailAuthDialog(BuildContext context, WidgetRef ref) {
+  final emailCtrl = TextEditingController();
+  final passCtrl = TextEditingController();
+  var isSignUp = false;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text(isSignUp ? 'Create Account' : 'Sign In'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'you@example.com',
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: passCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                hintText: 'At least 6 characters',
+              ),
+              obscureText: true,
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => setState(() => isSignUp = !isSignUp),
+              child: Text(
+                isSignUp
+                    ? 'Already have an account? Sign in'
+                    : 'New here? Create an account',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final email = emailCtrl.text.trim();
+              final password = passCtrl.text;
+              if (email.isEmpty || password.isEmpty) return;
+
+              try {
+                final supabase = ref.read(supabaseProvider);
+                if (isSignUp) {
+                  await supabase.auth.signUp(email: email, password: password);
+                } else {
+                  await supabase.auth.signInWithPassword(
+                      email: email, password: password);
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('$e')),
+                  );
+                }
+              }
+            },
+            child: Text(isSignUp ? 'Sign Up' : 'Sign In'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _handleAuthSuccess(

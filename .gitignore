@@ -53,3 +53,9 @@ __pycache__/
 # Google service credentials (regenerate via Firebase Console)
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+
+# Source icon images (used to generate mipmap/AppIcon assets)
+images/
+
+# ModifiedFiles (optimization/backup copies, not source)
+modifiedFiles/
