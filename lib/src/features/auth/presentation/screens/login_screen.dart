@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -55,6 +56,9 @@ class LoginScreen extends ConsumerWidget {
                         try {
                           await supabase.auth.signInWithOAuth(
                             OAuthProvider.google,
+                            redirectTo: kIsWeb
+                                ? null
+                                : 'com.rever.rever://callback',
                           );
                         } catch (e) {
                           if (context.mounted) {
