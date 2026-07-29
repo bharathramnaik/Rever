@@ -27,8 +27,7 @@ Rever/
 
 ## Commands
 - `flutter analyze` — Run linter (must pass before commit)
-- `flutter test` — Run all tests (currently 51 tests)
-- `flutter test test/unit/` — Run only unit tests
+- `flutter test` — Run all tests (currently 50 tests)
 - `flutter test test/widget/` — Run only widget tests
 - `flutter test test/integration/` — Run only integration tests
 - `flutter test --coverage` — Generate coverage report
@@ -65,8 +64,9 @@ Rever/
 - **No OpenAI API key yet** — AI tutor deferred to Phase 3
 
 ## Current State (July 2026)
-- **Phase 1 Foundation — Complete**: Flutter scaffold, Supabase (schema, seed, RLS), theme, router, data layer, 51 tests
+- **Phase 1 Foundation — ~80% complete**: Flutter scaffold, Supabase (schema, seed, RLS), theme, router, data layer, 50 tests
 - **Deployed at**: https://bharathramnaik.github.io/Rever/
-- **Working**: Onboarding (4 swipeable screens), Multi-profile switching (Netflix-style), Explore (topic grid), Topic → Concepts, Concept detail with learning objects
-- **Pending Phase 1**: Auth (email/Google sign-up), Interest selection during onboarding, Daily goal setting, Full profile creation, Search, Library save/bookmark, Daily journey, Reading streak
+- **Working**: Onboarding (4 swipeable screens + interest selection), Google OAuth + auto profile creation, Multi-profile switching (Netflix-style), Explore (topic grid), Topic → Concepts, Concept detail + quiz, Library with saved objects, Spaced repetition review, Source catalog, Dynamic app icons (morning/evening), CI/CD with secret management, PopScope back navigation
+- **Pending Phase 1**: Email/password auth, Daily goal setting → Supabase, Profile creation → Supabase (Add Profile dialog stubbed), Library save/bookmark → Supabase write, Full-text search, Daily journey feed, Reading streak persistence, Drift offline sync, Edge function deployment
 - **Blocked**: AI Tutor (needs OpenAI API key — Phase 3)
+- **Security**: Google service credentials removed from git, stored in GitHub Secrets, purged from history
