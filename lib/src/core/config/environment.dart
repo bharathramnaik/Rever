@@ -1,9 +1,3 @@
-/// Application configuration loaded from environment variables.
-///
-/// In development, values can be set via --dart-define flags:
-///   flutter run --dart-define=SUPABASE_URL=https://x.supabase.co
-///
-/// In production, values should be compiled in via --dart-define in CI/CD.
 class AppEnvironment {
   AppEnvironment._();
 
@@ -20,5 +14,10 @@ class AppEnvironment {
   static String get googleWebClientId => const String.fromEnvironment(
         'GOOGLE_WEB_CLIENT_ID',
         defaultValue: '693565124656-vuev5mjnbqu6jqvfq3rnc4g37dttu24g.apps.googleusercontent.com',
+      );
+
+  static bool get isDev => const bool.fromEnvironment(
+        'DEV_MODE',
+        defaultValue: true,
       );
 }

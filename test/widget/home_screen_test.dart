@@ -2,34 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/features/home/presentation/screens/home_screen.dart';
-import 'package:rever/src/core/providers/profile_provider.dart';
-import 'package:rever/src/data/providers/feed_provider.dart';
-class _BharathNotifier extends ActiveProfileNotifier {
-  @override
-  String? build() => 'Bharath';
-}
+import 'package:rever/src/data/providers/quote_provider.dart';
 
 void main() {
   group('HomeScreen', () {
-    testWidgets('renders greeting with profile name', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            activeProfileIdProvider.overrideWith(_BharathNotifier.new),
-            feedProvider.overrideWith((ref) async => []),
-          ],
-          child: const MaterialApp(home: HomeScreen()),
-        ),
-      );
-
-      expect(find.text('Bharath'), findsOneWidget);
-    });
-
     testWidgets('renders greeting with default name', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            feedProvider.overrideWith((ref) async => []),
+            randomQuoteProvider.overrideWith((ref) async => null),
           ],
           child: const MaterialApp(home: HomeScreen()),
         ),
@@ -38,14 +19,20 @@ void main() {
       expect(find.text('Learner'), findsOneWidget);
     });
 
-    testWidgets('renders feed section', (tester) async {
+    testWidgets('renders quick actions', (tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(home: HomeScreen()),
+        ProviderScope(
+          overrides: [
+            randomQuoteProvider.overrideWith((ref) async => null),
+          ],
+          child: const MaterialApp(home: HomeScreen()),
         ),
       );
 
-      expect(find.text('Learner'), findsOneWidget);
+      expect(find.text('Learn'), findsOneWidget);
+      expect(find.text('Explore'), findsOneWidget);
+      expect(find.text('Review'), findsOneWidget);
+      expect(find.text('AI Tutor'), findsOneWidget);
     });
   });
 }

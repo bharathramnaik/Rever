@@ -28,7 +28,11 @@ class ConceptRepository {
         .select()
         .inFilter('id', conceptIds)
         .order('created_at', ascending: false);
-    return (data as List).map((e) => ConceptModel.fromJson(e)).toList();
+    final seen = <String>{};
+    return (data as List)
+        .map((e) => ConceptModel.fromJson(e))
+        .where((c) => seen.add(c.id))
+        .toList();
   }
 
   Future<ConceptModel?> fetchBySlug(String slug) async {

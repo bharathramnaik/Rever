@@ -1,0 +1,52 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/providers/auth_provider.dart';
+import 'package:rever/src/data/models/quote_model.dart';
+
+final _dio = Dio(BaseOptions(
+  connectTimeout: const Duration(seconds: 8),
+  receiveTimeout: const Duration(seconds: 12),
+));
+
+final randomQuoteProvider = FutureProvider<Quote?>((ref) async {
+  final client = ref.watch(supabaseProvider);
+  try {
+    final data = await client
+        .from('quotes')
+        .select()
+        .order('random', ascending: true)
+        .limit(1)
+        .maybeSingle();
+    if (data != null) return Quote.fromJson(data);
+  } catch (_) {}
+  try {
+    final response = await _dio.get(
+      'https://api.quotable.io/quotes/random?maxLength=200',
+    );
+    final list = response.data as List;
+    if (list.isNotEmpty) {
+      final q = list[0] as Map<String, dynamic>;
+      return Quote(
+        id: q['_id'] as String? ?? '',
+        text: q['content'] as String? ?? '',
+        author: q['author'] as String? ?? 'Unknown',
+        category: (q['tags'] as List?)?.firstOrNull as String?,
+      );
+    }
+  } catch (_) {}
+  try {
+    final response = await _dio.get(
+      'https://zenquotes.io/api/random',
+    );
+    final list = response.data as List;
+    if (list.isNotEmpty) {
+      final q = list[0] as Map<String, dynamic>;
+      return Quote(
+        id: q['q'] as String? ?? '',
+        text: q['q'] as String? ?? '',
+        author: q['a'] as String? ?? 'Unknown',
+      );
+    }
+  } catch (_) {}
+  return null;
+});

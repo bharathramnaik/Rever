@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/app/app.dart';
+import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/providers/topic_providers.dart';
 import 'package:rever/src/data/providers/concept_providers.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
 import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/providers/feed_provider.dart';
+import 'package:rever/src/data/providers/quote_provider.dart';
 import 'package:rever/src/data/models/feed_item_model.dart';
 import '../helpers/test_data.dart';
 
@@ -17,6 +19,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            profilesProvider.overrideWith((ref) async => [testProfile]),
+            randomQuoteProvider.overrideWith((ref) async => null),
             topicsProvider.overrideWith((ref) async => testTopics),
             conceptsByTopicProvider
                 .overrideWith((ref, topicId) async => testConcepts),
@@ -63,11 +67,11 @@ void main() {
       expect(find.text("Who's learning?"), findsOneWidget);
 
       // Select first profile
-      await tester.tap(find.text('Bharath'));
+      await tester.tap(find.text('Test User'));
       await tester.pumpAndSettle();
 
-      // Should be on home screen with profile name
-      expect(find.text('Bharath'), findsOneWidget);
+      // Should be on home screen
+      expect(find.text('Today'), findsOneWidget);
     });
 
     testWidgets('explore -> concept navigation works', (tester) async {

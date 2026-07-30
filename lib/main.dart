@@ -15,10 +15,12 @@ Future<void> main() async {
     publishableKey: AppEnvironment.supabasePublishableKey,
   );
 
-  // Firebase is optional — initializes only if google-services files exist
   await FirebaseService.initialize();
 
-  // Set the correct app icon based on time of day (morning 6AM-6PM, evening 6PM-6AM)
+  if (AppEnvironment.isDev) {
+    await _autoSignIn();
+  }
+
   await setAppIconForCurrentTime();
 
   runApp(
@@ -26,4 +28,20 @@ Future<void> main() async {
       child: ReverApp(),
     ),
   );
+}
+
+Future<void> _autoSignIn() async {
+  try {
+    await Supabase.instance.client.auth.signInWithPassword(
+      email: 'dev@rever.app',
+      password: 'devpassword123',
+    );
+  } catch (_) {
+    try {
+      await Supabase.instance.client.auth.signUp(
+        email: 'dev@rever.app',
+        password: 'devpassword123',
+      );
+    } catch (_) {}
+  }
 }

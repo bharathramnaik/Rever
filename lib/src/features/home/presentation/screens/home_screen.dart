@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
-import 'package:rever/src/data/providers/feed_provider.dart';
-import 'package:rever/src/data/models/feed_item_model.dart';
+import 'package:rever/src/data/providers/quote_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -14,9 +13,14 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            _FeedHeader(),
-            SliverToBoxAdapter(child: SizedBox(height: 16)),
-            _FeedContent(),
+            _GreetingHeader(),
+            SliverToBoxAdapter(child: SizedBox(height: 8)),
+            _QuoteCard(),
+            SliverToBoxAdapter(child: SizedBox(height: 32)),
+            _QuickActions(),
+            SliverToBoxAdapter(child: SizedBox(height: 24)),
+            _DailySection(),
+            SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
       ),
@@ -24,8 +28,8 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _FeedHeader extends ConsumerWidget {
-  const _FeedHeader();
+class _GreetingHeader extends ConsumerWidget {
+  const _GreetingHeader();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,13 +40,12 @@ class _FeedHeader extends ConsumerWidget {
         : hour < 18
             ? 'Good afternoon'
             : 'Good evening';
-    final profileId = ref.watch(activeProfileIdProvider);
-    final profileAsync = ref.watch(activeProfileProvider);
 
+    final profileAsync = ref.watch(activeProfileProvider);
     final name = profileAsync.when(
-      data: (p) => p?.name ?? profileId ?? 'Learner',
-      loading: () => profileId ?? 'Learner',
-      error: (_, __) => profileId ?? 'Learner',
+      data: (p) => p?.name ?? 'Learner',
+      loading: () => 'Learner',
+      error: (_, __) => 'Learner',
     );
 
     return SliverAppBar(
@@ -51,7 +54,11 @@ class _FeedHeader extends ConsumerWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(greeting, style: theme.textTheme.bodySmall),
+          Text(greeting,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              )),
+          const SizedBox(height: 2),
           Text(name, style: theme.textTheme.titleLarge),
         ],
       ),
@@ -75,426 +82,381 @@ class _FeedHeader extends ConsumerWidget {
   }
 }
 
-class _FeedContent extends ConsumerWidget {
-  const _FeedContent();
+class _QuoteCard extends ConsumerStatefulWidget {
+  const _QuoteCard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final feedAsync = ref.watch(feedProvider);
+  ConsumerState<_QuoteCard> createState() => _QuoteCardState();
+}
 
-    return feedAsync.when(
-      data: (items) => SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final item = items[index];
-            return _FeedCard(item: item);
-          },
-          childCount: items.length,
+class _QuoteCardState extends ConsumerState<_QuoteCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final quoteAsync = ref.watch(randomQuoteProvider);
+
+    return quoteAsync.when(
+      data: (quote) {
+        if (quote == null) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GestureDetector(
+              onLongPressStart: (_) => setState(() => _expanded = true),
+              onLongPressEnd: (_) => setState(() => _expanded = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.all(_expanded ? 28 : 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary.withValues(alpha: 0.12),
+                      theme.colorScheme.secondary.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.format_quote,
+                            color: theme.colorScheme.primary, size: 32),
+                        const Spacer(),
+                        if (!_expanded)
+                          AnimatedOpacity(
+                            opacity: _expanded ? 0 : 1,
+                            duration: const Duration(milliseconds: 200),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.touch_app,
+                                      size: 14,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: 4),
+                                  Text('Hold to read',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                              color:
+                                                  theme.colorScheme.primary)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      style: _expanded
+                          ? theme.textTheme.titleLarge!.copyWith(height: 1.5)
+                          : theme.textTheme.headlineSmall!.copyWith(
+                              height: 1.3,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      child: Text(
+                        quote.text,
+                        style: TextStyle(
+                          color: _expanded
+                              ? theme.colorScheme.onSurface
+                              : theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.9),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AnimatedOpacity(
+                      opacity: _expanded ? 1 : 0.7,
+                      duration: const Duration(milliseconds: 200),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  quote.author,
+                                  style:
+                                      theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (quote.source != null && _expanded)
+                                  Text(
+                                    quote.source!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (_expanded && quote.category != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                quote.category!,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (_expanded) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Icon(Icons.refresh,
+                              size: 14,
+                              color: theme.colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text('Tap to refresh quote',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                              )),
+                          const Spacer(),
+                          Icon(Icons.share_outlined,
+                              size: 18,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.4)),
+                          const SizedBox(width: 16),
+                          Icon(Icons.bookmark_outline,
+                              size: 18,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.4)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: 0.5),
+            ),
+          ),
         ),
       ),
-      loading: () => const SliverFillRemaining(
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => SliverFillRemaining(
-        child: Center(child: Text('$e')),
+      error: (e, _) => SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(child: Text('$e')),
+        ),
       ),
     );
   }
 }
 
-class _FeedCard extends ConsumerWidget {
-  final FeedItemModel item;
+class _QuickActions extends StatelessWidget {
+  const _QuickActions();
 
-  const _FeedCard({required this.item});
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final actions = [
+      _ActionItem(
+        icon: Icons.auto_stories,
+        label: 'Learn',
+        color: theme.colorScheme.primary,
+        onTap: () => context.go('/learn'),
+      ),
+      _ActionItem(
+        icon: Icons.explore,
+        label: 'Explore',
+        color: theme.colorScheme.secondary,
+        onTap: () => context.go('/explore'),
+      ),
+      _ActionItem(
+        icon: Icons.replay,
+        label: 'Review',
+        color: Colors.amber.shade600,
+        onTap: () => context.go('/review'),
+      ),
+      _ActionItem(
+        icon: Icons.auto_awesome,
+        label: 'AI Tutor',
+        color: const Color(0xFFE040FB),
+        onTap: () => context.go('/ai-tutor'),
+      ),
+    ];
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: actions.map((a) => _QuickActionButton(action: a)).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final _ActionItem action;
+  const _QuickActionButton({required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: action.onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: action.color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(action.icon, color: action.color, size: 26),
+          ),
+          const SizedBox(height: 6),
+          Text(action.label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionItem {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+class _DailySection extends ConsumerWidget {
+  const _DailySection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    switch (item.type) {
-      case FeedItemType.discovery:
-        return _DiscoveryCard(item: item, theme: theme);
-      case FeedItemType.insight:
-        return _InsightCard(item: item, theme: theme);
-      case FeedItemType.concept:
-        return _ConceptFeedCard(item: item, theme: theme);
-      case FeedItemType.question:
-        return _QuestionCard(item: item, theme: theme);
-      case FeedItemType.challenge:
-        return _ChallengeCard(item: item, theme: theme);
-      case FeedItemType.review:
-        return _ReviewCard(item: item, theme: theme);
-      case FeedItemType.story:
-        return _StoryCard(item: item, theme: theme);
-      case FeedItemType.visual:
-        return _VisualCard(item: item, theme: theme);
-      case FeedItemType.learningPath:
-        return _LearningPathCard(item: item, theme: theme);
-      default:
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: ListTile(title: Text(item.title)),
-        );
-    }
-  }
-}
-
-class _DiscoveryCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _DiscoveryCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.auto_stories, color: Colors.white, size: 24),
-              SizedBox(width: 8),
-              Text('Today', style: TextStyle(color: Colors.white70)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(item.title,
-              style: theme.textTheme.headlineMedium
-                  ?.copyWith(color: Colors.white)),
-          const SizedBox(height: 4),
-          Text(item.subtitle ?? '',
-              style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 16),
-          const LinearProgressIndicator(
-              value: 0.3,
-              backgroundColor: Colors.white30,
-              color: Colors.white),
-        ],
-      ),
-    );
-  }
-}
-
-class _InsightCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _InsightCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    final colorHex = item.metadata?['color'] as String? ?? '#6C63FF';
-    final color = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12)),
-          child: Icon(Icons.explore, color: color),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? '',
-            maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['slug'] as String?;
-          if (slug != null) context.go('/topic/$slug');
-        },
-      ),
-    );
-  }
-}
-
-class _ConceptFeedCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _ConceptFeedCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(Icons.auto_stories, color: theme.colorScheme.primary),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Column(
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (item.subtitle != null)
-              Text(item.subtitle!,
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Chip(
-                  label: Text(
-                      item.metadata?['difficulty'] as String? ?? 'beginner',
-                      style: const TextStyle(fontSize: 10)),
-                  visualDensity: VisualDensity.compact,
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 12),
+              child: Text('Today',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  )),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
-                const SizedBox(width: 8),
-                if (item.metadata?['minutes'] != null)
-                  Text('${item.metadata!['minutes']} min',
-                      style: theme.textTheme.bodySmall),
-              ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.local_fire_department,
+                        color: Colors.amber, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Streak',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            )),
+                        const SizedBox(height: 2),
+                        Text('Start your learning journey today',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.5),
+                            )),
+                      ],
+                    ),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: () => context.go('/learn'),
+                    child: const Text('Begin'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['slug'] as String?;
-          if (slug != null) context.go('/concept/$slug');
-        },
-      ),
-    );
-  }
-}
-
-class _QuestionCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _QuestionCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: theme.colorScheme.primary.withValues(alpha: 0.05),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child:
-              Icon(Icons.help_outline, color: theme.colorScheme.secondary),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? ''),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['concept_slug'] as String?;
-          if (slug != null) context.go('/concept/$slug');
-        },
-      ),
-    );
-  }
-}
-
-class _ChallengeCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _ChallengeCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.local_fire_department,
-              color: Colors.orange, size: 32),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: theme.textTheme.titleMedium),
-                Text(item.subtitle ?? '', style: theme.textTheme.bodySmall),
-              ],
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios,
-              size: 16,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Review reminder card — concepts due for spaced repetition review
-class _ReviewCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _ReviewCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: Colors.amber.withValues(alpha: 0.08),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.replay, color: Colors.amber),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? 'Time to review and strengthen your memory'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['concept_slug'] as String?;
-          if (slug != null) context.go('/concept/$slug');
-        },
-      ),
-    );
-  }
-}
-
-/// Story card — narrative-style learning content
-class _StoryCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _StoryCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE040FB).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.menu_book, color: Color(0xFFE040FB)),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['slug'] as String?;
-          if (slug != null) context.go('/concept/$slug');
-        },
-      ),
-    );
-  }
-}
-
-/// Visual card — diagram/flowchart/timeline preview
-class _VisualCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _VisualCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFF00BCD4).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.bubble_chart, color: Color(0xFF00BCD4)),
-        ),
-        title: Text(item.title, style: theme.textTheme.titleMedium),
-        subtitle: Text(item.subtitle ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          final slug = item.metadata?['slug'] as String?;
-          if (slug != null) context.go('/concept/$slug');
-        },
-      ),
-    );
-  }
-}
-
-/// Learning path suggestion card
-class _LearningPathCard extends StatelessWidget {
-  final FeedItemModel item;
-  final ThemeData theme;
-
-  const _LearningPathCard({required this.item, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.secondary.withValues(alpha: 0.15),
-            theme.colorScheme.primary.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.secondary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.route, color: theme.colorScheme.secondary, size: 32),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title, style: theme.textTheme.titleMedium),
-                Text(item.subtitle ?? '', style: theme.textTheme.bodySmall),
-              ],
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios,
-              size: 16,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-        ],
       ),
     );
   }

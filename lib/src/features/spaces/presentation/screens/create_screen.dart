@@ -1,152 +1,363 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/services/external_content_service.dart';
 
-class CreateScreen extends ConsumerWidget {
+class CreateScreen extends ConsumerStatefulWidget {
   const CreateScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+  ConsumerState<CreateScreen> createState() => _CreateScreenState();
+}
 
+class _CreateScreenState extends ConsumerState<CreateScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _urlController = TextEditingController();
+  final _noteController = TextEditingController();
+  final _youtubeController = TextEditingController();
+  bool _processing = false;
+  List<StashCard> _generatedCards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _urlController.dispose();
+    _noteController.dispose();
+    _youtubeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Create', style: theme.textTheme.displayLarge),
-              const SizedBox(height: 8),
-              Text(
-                'Build your knowledge',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Text('Create', style: theme.textTheme.displayLarge),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(
+                'Import sources and generate idea cards',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
-              const SizedBox(height: 24),
-              _CreateOption(
-                icon: Icons.auto_awesome,
-                title: 'Ask AI Tutor',
-                subtitle: 'Chat with an AI tutor about any topic',
-                color: theme.colorScheme.primary,
-                onTap: () => context.go('/ai-tutor'),
+            ),
+            const SizedBox(height: 16),
+            TabBar(
+              controller: _tabController,
+              labelColor: theme.colorScheme.primary,
+              unselectedLabelColor:
+                  theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              indicatorColor: theme.colorScheme.primary,
+              tabs: const [
+                Tab(icon: Icon(Icons.link), text: 'URL'),
+                Tab(icon: Icon(Icons.edit_note), text: 'Note'),
+                Tab(icon: Icon(Icons.videocam_outlined), text: 'YouTube'),
+              ],
+            ),
+            Expanded(
+              child: _processing
+                  ? _ProcessingView()
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _UrlTab(
+                          controller: _urlController,
+                          onProcess: _processSource,
+                        ),
+                        _NoteTab(
+                          controller: _noteController,
+                          onProcess: _processSource,
+                        ),
+                        _YoutubeTab(
+                          controller: _youtubeController,
+                          onProcess: _processSource,
+                        ),
+                      ],
+                    ),
+            ),
+            if (_generatedCards.isNotEmpty)
+              _ReviewBar(
+                count: _generatedCards.length,
+                onView: () => _showReviewSheet(),
+                onClear: () => setState(() => _generatedCards = []),
               ),
-              const SizedBox(height: 12),
-              _CreateOption(
-                icon: Icons.collections_bookmark,
-                title: 'Learning Space',
-                subtitle: 'Create a collection of concepts around a theme',
-                color: theme.colorScheme.secondary,
-                onTap: () => _showCreateSpaceDialog(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processSource(String text) async {
+    if (text.trim().isEmpty) return;
+    setState(() => _processing = true);
+    try {
+      final service = ref.read(externalContentServiceProvider);
+      await Future.delayed(const Duration(seconds: 2));
+      final item = await service.fetchDetail(
+        ExploreContent(
+          id: 'generated',
+          title: text.length > 60
+              ? '${text.substring(0, 60)}...'
+              : text,
+          description: text,
+          source: ContentSource.article,
+        ),
+      );
+      final stashes = service.generateStashes(item);
+      setState(() => _generatedCards = stashes);
+    } catch (_) {}
+    setState(() => _processing = false);
+  }
+
+  void _showReviewSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
-              _CreateOption(
-                icon: Icons.edit_note,
-                title: 'Quick Note',
-                subtitle: 'Capture a thought or insight while learning',
-                color: Colors.orange,
-                onTap: () => _showCreateNoteDialog(context),
+              const SizedBox(height: 16),
+              Text('Generated Ideas',
+                  style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              Text('${_generatedCards.length} cards extracted',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.5),
+                      )),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: _generatedCards.length,
+                  itemBuilder: (_, i) {
+                    final card = _generatedCards[i];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  card.type == StashType.overview
+                                      ? Icons.info_outline
+                                      : Icons.lightbulb_outline,
+                                  size: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  card.title,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              card.content,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-              const SizedBox(height: 12),
-              _CreateOption(
-                icon: Icons.quiz,
-                title: 'Custom Quiz',
-                subtitle: 'Test yourself on what you\'ve learned',
-                color: Colors.purple,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Custom quizzes coming soon!')),
-                  );
-                },
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Save to Library'),
+                ),
               ),
-              const SizedBox(height: 12),
-              _CreateOption(
-                icon: Icons.route,
-                title: 'Learning Path',
-                subtitle: 'Plan a sequence of concepts to master a topic',
-                color: const Color(0xFF4A90D9),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Learning paths coming soon!')),
-                  );
-                },
-              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  void _showCreateSpaceDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New Learning Space'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Space Name',
-            hintText: 'e.g., AI & Machine Learning',
-          ),
+class _ProcessingView extends StatefulWidget {
+  @override
+  State<_ProcessingView> createState() => _ProcessingViewState();
+}
+
+class _ProcessingViewState extends State<_ProcessingView>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _anim;
+  int _step = 0;
+
+  final _steps = [
+    'Parsing source content...',
+    'Extracting key ideas...',
+    'Generating insight cards...',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _advance();
+  }
+
+  void _advance() async {
+    for (var i = 0; i < _steps.length; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) setState(() => _step = i);
+    }
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder(
+              animation: _anim,
+              builder: (_, child) => Transform.rotate(
+                angle: _anim.value * 6.28,
+                child: Icon(Icons.auto_stories,
+                    size: 56,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              _steps[_step],
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 200,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: (_step + 1) / _steps.length,
+                  minHeight: 4,
+                ),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Space "${nameController.text}" created! (DB integration coming)'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
       ),
     );
   }
+}
 
-  void _showCreateNoteDialog(BuildContext context) {
-    final noteController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Quick Note'),
-        content: TextField(
-          controller: noteController,
-          maxLines: 5,
-          decoration: const InputDecoration(
-            labelText: 'Your note',
-            hintText: 'What did you learn today?',
-            alignLabelWithHint: true,
+class _UrlTab extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onProcess;
+
+  const _UrlTab({required this.controller, required this.onProcess});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Icon(Icons.link, size: 48,
+              color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text('Paste a web article URL',
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text('AI will extract key ideas from the page',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              )),
+          const SizedBox(height: 20),
+          TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'https://example.com/article',
+              prefixIcon: const Icon(Icons.search),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (noteController.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Note saved!')),
-                );
-              }
-            },
-            child: const Text('Save'),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => onProcess(controller.text),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Extract Ideas'),
+            ),
           ),
         ],
       ),
@@ -154,60 +365,160 @@ class CreateScreen extends ConsumerWidget {
   }
 }
 
-class _CreateOption extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
+class _NoteTab extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onProcess;
 
-  const _CreateOption({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
+  const _NoteTab({required this.controller, required this.onProcess});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Icon(Icons.edit_note, size: 48,
+              color: theme.colorScheme.secondary.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text('Write a raw note or paste text',
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text('Paste book excerpts, articles, or your thoughts',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              )),
+          const SizedBox(height: 20),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              maxLines: null,
+              expands: true,
+              textAlignVertical: TextAlignVertical.top,
+              decoration: InputDecoration(
+                hintText: 'Paste your content here...',
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => onProcess(controller.text),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Extract Ideas'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _YoutubeTab extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onProcess;
+
+  const _YoutubeTab({required this.controller, required this.onProcess});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Icon(Icons.videocam_outlined, size: 48,
+              color: Colors.red.withValues(alpha: 0.5)),
+          const SizedBox(height: 12),
+          Text('Paste a YouTube video link',
+              style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text('Get key takeaways from video content',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              )),
+          const SizedBox(height: 20),
+          TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'https://youtube.com/watch?v=...',
+              prefixIcon: const Icon(Icons.play_circle_outline),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => onProcess(controller.text),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Extract Ideas'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewBar extends StatelessWidget {
+  final int count;
+  final VoidCallback onView;
+  final VoidCallback onClear;
+
+  const _ReviewBar({
+    required this.count,
+    required this.onView,
+    required this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: theme.textTheme.titleMedium),
-                    Text(subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        )),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
-            ],
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle,
+              color: Colors.green.withValues(alpha: 0.7), size: 20),
+          const SizedBox(width: 8),
+          Text('$count ideas generated',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              )),
+          const Spacer(),
+          TextButton(
+            onPressed: onClear,
+            child: const Text('Clear'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: onView,
+            child: const Text('Review'),
+          ),
+        ],
       ),
     );
   }

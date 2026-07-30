@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/models/explore_content_model.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/onboarding/presentation/screens/interest_selection_screen.dart';
@@ -10,6 +11,7 @@ import '../features/profile/presentation/screens/me_screen.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
 import '../features/explore/presentation/screens/topic_screen.dart';
 import '../features/library/presentation/screens/library_screen.dart';
+import '../features/library/presentation/screens/content_reel_screen.dart';
 import '../features/spaces/presentation/screens/create_screen.dart';
 import '../features/concept/presentation/screens/concept_screen.dart';
 import '../features/sources/presentation/screens/sources_screen.dart';
@@ -20,7 +22,7 @@ import '../features/auth/presentation/screens/login_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: '/profiles',
     routes: [
       GoRoute(
         path: '/onboarding',
@@ -98,6 +100,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/review',
         builder: (context, state) => const ReviewScreen(),
+      ),
+      GoRoute(
+        path: '/content-reel',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          final items = args['items'] as List<ExploreContent>;
+          final index = args['index'] as int? ?? 0;
+          return ContentReelScreen(items: items, initialIndex: index);
+        },
       ),
     ],
   );

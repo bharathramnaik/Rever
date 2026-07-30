@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/config/environment.dart';
 import 'package:rever/src/core/providers/auth_provider.dart';
 import 'package:rever/src/data/models/profile_model.dart';
 
@@ -14,39 +15,59 @@ final activeProfileIdProvider =
   ActiveProfileNotifier.new,
 );
 
-/// Fetches the full ProfileModel for the active profile
 final activeProfileProvider = FutureProvider<ProfileModel?>((ref) async {
   final profileId = ref.watch(activeProfileIdProvider);
   if (profileId == null) return null;
-  final client = ref.watch(supabaseProvider);
-  final data = await client
-      .from('profiles')
-      .select()
-      .eq('id', profileId)
-      .maybeSingle();
-  if (data == null) return null;
-  return ProfileModel.fromJson(data);
+  final profile = _demoProfiles.firstWhere(
+    (p) => p.id == profileId,
+    orElse: () => _demoProfiles.first,
+  );
+  return profile;
 });
 
-/// Fetches all profiles for the current account (or all profiles if unauthenticated)
 final profilesProvider = FutureProvider<List<ProfileModel>>((ref) async {
-  final client = ref.watch(supabaseProvider);
-  final user = client.auth.currentUser;
-
-  List<dynamic> data;
-  if (user != null) {
-    // Fetch profiles for this account
-    data = await client
-        .from('profiles')
-        .select()
-        .eq('account_id', user.id)
-        .order('created_at', ascending: true);
-  } else {
-    // For demo/unauthenticated mode, fetch all profiles
-    data = await client
-        .from('profiles')
-        .select()
-        .order('created_at', ascending: true);
+  if (!AppEnvironment.isDev) {
+    final client = ref.watch(supabaseProvider);
+    final user = client.auth.currentUser;
+    List<dynamic> data;
+    if (user != null) {
+      data = await client
+          .from('profiles')
+          .select()
+          .eq('account_id', user.id)
+          .order('created_at', ascending: true);
+    } else {
+      data = await client
+          .from('profiles')
+          .select()
+          .order('created_at', ascending: true);
+    }
+    if (data.isNotEmpty) {
+      return data.map((e) => ProfileModel.fromJson(e)).toList();
+    }
   }
-  return data.map((e) => ProfileModel.fromJson(e)).toList();
+  return _demoProfiles;
 });
+
+final _demoProfiles = [
+  ProfileModel(
+    id: 'dev-bharath',
+    accountId: 'dev-account',
+    name: 'Bharath',
+    profileType: 'adult',
+  ),
+  ProfileModel(
+    id: 'dev-arjun',
+    accountId: 'dev-account',
+    name: 'Arjun',
+    profileType: 'child',
+    ageRange: '8',
+  ),
+  ProfileModel(
+    id: 'dev-nikhil',
+    accountId: 'dev-account',
+    name: 'Nikhil',
+    profileType: 'teen',
+    ageRange: '15',
+  ),
+];

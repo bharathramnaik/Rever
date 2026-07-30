@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
+import 'package:rever/src/data/services/external_content_service.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -18,7 +20,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -39,7 +41,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text('Your Library', style: theme.textTheme.displayLarge),
+              child: Text('Library', style: theme.textTheme.displayLarge),
             ),
             const SizedBox(height: 16),
             TabBar(
@@ -49,10 +51,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   theme.colorScheme.onSurface.withValues(alpha: 0.5),
               indicatorColor: theme.colorScheme.primary,
               tabs: const [
+                Tab(icon: Icon(Icons.explore), text: 'Discover'),
                 Tab(icon: Icon(Icons.bookmark), text: 'Saved'),
                 Tab(icon: Icon(Icons.auto_stories), text: 'Concepts'),
-                Tab(icon: Icon(Icons.edit_note), text: 'Notes'),
-                Tab(icon: Icon(Icons.history), text: 'History'),
               ],
             ),
             Expanded(
@@ -61,10 +62,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   : TabBarView(
                       controller: _tabController,
                       children: [
+                        const _DiscoverTab(),
                         _SavedTab(profileId: profileId),
                         _ConceptsTab(profileId: profileId),
-                        _NotesTab(theme: theme),
-                        _HistoryTab(theme: theme),
                       ],
                     ),
             ),
@@ -99,6 +99,382 @@ class _NoProfile extends StatelessWidget {
             child: const Text('Switch Profile'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DiscoverTab extends ConsumerStatefulWidget {
+  const _DiscoverTab();
+
+  @override
+  ConsumerState<_DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final trendingAsync = ref.watch(trendingContentProvider);
+
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search books...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (v) => setState(() => _searchQuery = v),
+            ),
+          ),
+        ),
+        if (_searchQuery.isNotEmpty)
+          _SearchResults(query: _searchQuery)
+        else
+          trendingAsync.when(
+            data: (items) {
+              final books =
+                  items.where((i) => i.source == ContentSource.book).toList();
+              final articles =
+                  items.where((i) => i.source == ContentSource.article).toList();
+              return SliverList(
+                delegate: SliverChildListDelegate([
+                  if (books.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Trending Books',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 260,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: books.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (_, i) => _BookCard(
+                          item: books[i],
+                          onTap: () => _openReel(context, books,
+                              index: i),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                  ],
+                  if (articles.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('Discover Articles',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ),
+                    const SizedBox(height: 12),
+                    ...articles.map(
+                      (a) => _ArticleCard(
+                        item: a,
+                        onTap: () => _openReel(context, articles, index: articles.indexOf(a)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ]),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverToBoxAdapter(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(Icons.cloud_off, size: 48,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.3)),
+                      const SizedBox(height: 12),
+                      Text('Could not load content',
+                          style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SearchResults extends ConsumerWidget {
+  final String query;
+  const _SearchResults({required this.query});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final resultsAsync = ref.watch(searchBooksProvider(query));
+
+    return resultsAsync.when(
+      data: (books) {
+        if (books.isEmpty) {
+          return SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text('No books found for "$query"',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.5),
+                    )),
+              ),
+            ),
+          );
+        }
+        return SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (_, i) => Padding(
+              padding: EdgeInsets.only(
+                left: 16, right: 16, top: i == 0 ? 0 : 8, bottom: 8,
+              ),
+              child: _BookRow(
+                item: books[i],
+                onTap: () => _openReel(context, books, index: i),
+              ),
+            ),
+            childCount: books.length,
+          ),
+        );
+      },
+      loading: () => const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => SliverToBoxAdapter(
+        child: Center(child: Text('$e')),
+      ),
+    );
+  }
+}
+
+void _openReel(BuildContext context, List<ExploreContent> items,
+    {int index = 0}) {
+  context.push('/content-reel', extra: {'items': items, 'index': index});
+}
+
+class _BookCard extends StatelessWidget {
+  final ExploreContent item;
+  final VoidCallback? onTap;
+  const _BookCard({required this.item, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 150,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: item.thumbnailUrl != null
+                  ? Image.network(
+                      item.thumbnailUrl!,
+                      height: 170,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 170,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                        child: Icon(Icons.menu_book, size: 40,
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.3)),
+                      ),
+                    )
+                  : Container(
+                      height: 170,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                      child: Icon(Icons.menu_book, size: 40,
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.3)),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (item.author != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.author!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BookRow extends StatelessWidget {
+  final ExploreContent item;
+  final VoidCallback? onTap;
+  const _BookRow({required this.item, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: item.thumbnailUrl != null
+              ? Image.network(
+                  item.thumbnailUrl!,
+                  width: 44, height: 64, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 44, height: 64,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                    child: Icon(Icons.menu_book, size: 24,
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: 0.3)),
+                  ),
+                )
+              : Container(
+                  width: 44, height: 64,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                  child: Icon(Icons.menu_book, size: 24,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                ),
+        ),
+        title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: item.author != null
+            ? Text(item.author!, style: theme.textTheme.bodySmall)
+            : null,
+        trailing: Icon(Icons.add_circle_outline,
+            color: theme.colorScheme.primary),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _ArticleCard extends StatelessWidget {
+  final ExploreContent item;
+  final VoidCallback? onTap;
+  const _ArticleCard({required this.item, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 48, height: 48,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.article, color: theme.colorScheme.secondary),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.title, maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          )),
+                      if (item.description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(item.description!, maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.6),
+                            )),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.open_in_new, size: 18,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.3)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -185,42 +561,11 @@ class _ConceptsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    // For now, show mastered concepts — this will use mastery table
     return _EmptyState(
       theme: theme,
       icon: Icons.auto_stories,
       title: 'Concepts you\'ve studied',
       subtitle: 'Concepts will appear here as you learn and quiz',
-    );
-  }
-}
-
-class _NotesTab extends StatelessWidget {
-  final ThemeData theme;
-  const _NotesTab({required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return _EmptyState(
-      theme: theme,
-      icon: Icons.edit_note,
-      title: 'Your notes',
-      subtitle: 'Notes you take while learning will appear here',
-    );
-  }
-}
-
-class _HistoryTab extends StatelessWidget {
-  final ThemeData theme;
-  const _HistoryTab({required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return _EmptyState(
-      theme: theme,
-      icon: Icons.history,
-      title: 'Learning history',
-      subtitle: 'Your learning sessions and activity timeline',
     );
   }
 }
