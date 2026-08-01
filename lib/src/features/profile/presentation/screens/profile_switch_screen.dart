@@ -45,15 +45,15 @@ class ProfileSwitchScreen extends ConsumerWidget {
                       children: [
                         ...profiles.map((profile) => Padding(
                               padding: const EdgeInsets.only(bottom: 16),
-                              child: _ProfileCard(
-                                profile: profile,
-                                onTap: () {
-                                  ref
-                                      .read(activeProfileIdProvider.notifier)
-                                      .select(profile.id);
-                                  context.go('/home');
-                                },
-                              ),
+                                child: _ProfileCard(
+                                  profile: profile,
+                                  onTap: () {
+                                    ref
+                                        .read(activeProfileIdProvider.notifier)
+                                        .select(profile.id);
+                                    context.go('/preferences');
+                                  },
+                                ),
                             )),
                         OutlinedButton.icon(
                           onPressed: () => _showAddProfileDialog(context, ref),
@@ -79,7 +79,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
                     ref: ref,
                     onSelect: (id) {
                       ref.read(activeProfileIdProvider.notifier).select(id);
-                      context.go('/home');
+                      context.go('/preferences');
                     },
                   ),
                 ),

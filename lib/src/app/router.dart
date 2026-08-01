@@ -6,6 +6,7 @@ import '../data/models/explore_content_model.dart';
 import '../features/home/presentation/screens/home_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../features/onboarding/presentation/screens/interest_selection_screen.dart';
+import '../features/onboarding/presentation/screens/preference_quiz_screen.dart';
 import '../features/profile/presentation/screens/profile_switch_screen.dart';
 import '../features/profile/presentation/screens/me_screen.dart';
 import '../features/explore/presentation/screens/explore_screen.dart';
@@ -31,6 +32,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/interests',
         builder: (context, state) => const InterestSelectionScreen(),
+      ),
+      GoRoute(
+        path: '/preferences',
+        builder: (context, state) => PreferenceQuizScreen(
+          force: state.uri.queryParameters['force'] == 'true',
+        ),
       ),
       GoRoute(
         path: '/profiles',

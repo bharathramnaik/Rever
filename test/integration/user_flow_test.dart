@@ -10,7 +10,22 @@ import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/providers/feed_provider.dart';
 import 'package:rever/src/data/providers/quote_provider.dart';
 import 'package:rever/src/data/models/feed_item_model.dart';
+import 'package:rever/src/data/models/preferences_model.dart';
+import 'package:rever/src/data/repositories/preference_repository.dart';
+import 'package:rever/src/data/providers/preferences_provider.dart';
+import 'package:rever/src/data/services/external_content_service.dart';
 import '../helpers/test_data.dart';
+
+class _FakePreferenceRepository implements PreferenceRepository {
+  final Map<String, PreferencesModel> _store = {};
+
+  @override
+  Future<PreferencesModel?> fetch(String profileId) async => _store[profileId];
+
+  @override
+  Future<void> save(PreferencesModel preferences) async =>
+      _store[preferences.profileId] = preferences;
+}
 
 void main() {
   group('Critical User Flow', () {
@@ -31,6 +46,9 @@ void main() {
                 .overrideWith((ref, profileId) async => testLearningObjects),
             streakProvider
                 .overrideWith((ref, profileId) async => testStreak),
+            preferenceRepositoryProvider
+                .overrideWith((ref) => _FakePreferenceRepository()),
+            trendingContentProvider.overrideWith((ref) async => []),
             feedProvider.overrideWith((ref) async => [
               FeedItemModel(
                 id: 'test-feed-1',
@@ -52,6 +70,11 @@ void main() {
 
       // Select first profile
       await tester.tap(find.text('Test User'));
+      await tester.pumpAndSettle();
+
+      // Preference quiz shows; skip it
+      expect(find.text('What are you most interested in?'), findsOneWidget);
+      await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
 
       // Should be on home screen

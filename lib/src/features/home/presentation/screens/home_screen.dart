@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/preferences_model.dart';
+import 'package:rever/src/data/providers/preferences_provider.dart';
 import 'package:rever/src/data/providers/quote_provider.dart';
+import 'package:rever/src/data/services/external_content_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -12,16 +16,18 @@ class HomeScreen extends ConsumerWidget {
     return const Scaffold(
       body: SafeArea(
         child: CustomScrollView(
-          slivers: [
-            _GreetingHeader(),
-            SliverToBoxAdapter(child: SizedBox(height: 4)),
-            _QuoteCard(),
-            SliverToBoxAdapter(child: SizedBox(height: 28)),
-            _QuickActions(),
-            SliverToBoxAdapter(child: SizedBox(height: 28)),
-            _DailySection(),
-            SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
+        slivers: [
+          _GreetingHeader(),
+          SliverToBoxAdapter(child: SizedBox(height: 4)),
+          _QuoteCard(),
+          SliverToBoxAdapter(child: SizedBox(height: 28)),
+          _ForYouSection(),
+          SliverToBoxAdapter(child: SizedBox(height: 28)),
+          _QuickActions(),
+          SliverToBoxAdapter(child: SizedBox(height: 28)),
+          _DailySection(),
+          SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
         ),
       ),
     );
@@ -311,6 +317,179 @@ class _QuoteCardState extends ConsumerState<_QuoteCard> {
         child: Padding(
           padding: const EdgeInsets.all(40),
           child: Center(child: Text('$e')),
+        ),
+      ),
+    );
+  }
+}
+
+class _ForYouSection extends ConsumerWidget {
+  const _ForYouSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final prefs = ref.watch(activePreferencesProvider).asData?.value;
+    final items = ref.watch(trendingContentProvider).asData?.value;
+
+    final topics = prefs?.topics ?? const [];
+    if (topics.isEmpty || items == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final books =
+        items.where((i) => i.source == ContentSource.book).toList();
+    final matched =
+        books.where((b) => matchesPreferences(b, topics)).toList();
+    if (matched.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text('For you', style: theme.textTheme.titleLarge),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => context.go('/library'),
+                  child: Text('See all',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                      )),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 150,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: matched.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, i) => _ForYouBookCard(
+                item: matched[i],
+                onTap: () => context.push('/content-reel', extra: {
+                  'items': matched,
+                  'index': i,
+                }),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ForYouBookCard extends StatelessWidget {
+  final ExploreContent item;
+  final VoidCallback onTap;
+  const _ForYouBookCard({required this.item, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 280,
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: item.thumbnailUrl != null
+                      ? Image.network(
+                          item.thumbnailUrl!,
+                          width: 62,
+                          height: 84,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 62,
+                            height: 84,
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.06),
+                            child: Icon(Icons.menu_book,
+                                size: 24,
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.3)),
+                          ),
+                        )
+                      : Container(
+                          width: 62,
+                          height: 84,
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.06),
+                          child: Icon(Icons.menu_book,
+                              size: 24,
+                              color:
+                                  theme.colorScheme.primary.withValues(alpha: 0.3)),
+                        ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                      ),
+                      if (item.author != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          item.author!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'READ →',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

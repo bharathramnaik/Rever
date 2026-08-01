@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/features/home/presentation/screens/home_screen.dart';
 import 'package:rever/src/data/providers/quote_provider.dart';
+import 'package:rever/src/data/services/external_content_service.dart';
 
 void main() {
   group('HomeScreen', () {
@@ -11,6 +12,7 @@ void main() {
         ProviderScope(
           overrides: [
             randomQuoteProvider.overrideWith((ref) async => null),
+            trendingContentProvider.overrideWith((ref) async => []),
           ],
           child: const MaterialApp(home: HomeScreen()),
         ),
@@ -24,6 +26,7 @@ void main() {
         ProviderScope(
           overrides: [
             randomQuoteProvider.overrideWith((ref) async => null),
+            trendingContentProvider.overrideWith((ref) async => []),
           ],
           child: const MaterialApp(home: HomeScreen()),
         ),

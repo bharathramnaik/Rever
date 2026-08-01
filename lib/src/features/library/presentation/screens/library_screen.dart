@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/preferences_model.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
+import 'package:rever/src/data/providers/preferences_provider.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -162,45 +164,42 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
         else
           trendingAsync.when(
             data: (items) {
+              final prefs = ref.watch(activePreferencesProvider).asData?.value;
+              final topics = prefs?.topics ?? const [];
+              final personalized = topics.isNotEmpty;
+
               final books =
                   items.where((i) => i.source == ContentSource.book).toList();
               final articles =
                   items.where((i) => i.source == ContentSource.article).toList();
+              final matchedBooks =
+                  books.where((b) => matchesPreferences(b, topics)).toList();
+              final shownBooks = matchedBooks.isNotEmpty ? matchedBooks : books;
+              final booksSectionLabel =
+                  personalized ? 'Picked for you' : 'Trending Books';
               return SliverList(
                 delegate: SliverChildListDelegate([
-                  if (books.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Trending Books',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          )),
-                    ),
+                  if (shownBooks.isNotEmpty) ...[
+                    _SectionHeader(label: booksSectionLabel, theme: theme),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 260,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: books.length,
+                        itemCount: shownBooks.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (_, i) => _BookCard(
-                          item: books[i],
-                          onTap: () => _openReel(context, books,
-                              index: i),
+                          item: shownBooks[i],
+                          onTap: () =>
+                              _openReel(context, shownBooks, index: i),
                         ),
                       ),
                     ),
                     const SizedBox(height: 28),
                   ],
                   if (articles.isNotEmpty) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text('Discover Articles',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          )),
-                    ),
+                    _SectionHeader(label: 'Discover Articles', theme: theme),
                     const SizedBox(height: 12),
                     ...articles.map(
                       (a) => _ArticleCard(
@@ -294,6 +293,38 @@ void _openReel(BuildContext context, List<ExploreContent> items,
   context.push('/content-reel', extra: {'items': items, 'index': index});
 }
 
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final ThemeData theme;
+  const _SectionHeader({required this.label, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 18,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BookCard extends StatelessWidget {
   final ExploreContent item;
   final VoidCallback? onTap;
@@ -308,40 +339,64 @@ class _BookCard extends StatelessWidget {
         width: 150,
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: item.thumbnailUrl != null
-                  ? Image.network(
-                      item.thumbnailUrl!,
-                      height: 170,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 170,
-                        color: theme.colorScheme.primary.withValues(alpha: 0.06),
-                        child: Icon(Icons.menu_book, size: 40,
-                            color: theme.colorScheme.primary
-                                .withValues(alpha: 0.3)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
+              child: SizedBox(
+                height: 170,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (item.thumbnailUrl != null)
+                      Image.network(
+                        item.thumbnailUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _coverFallback(theme),
+                      )
+                    else
+                      _coverFallback(theme),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'BOOK',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.white,
+                            fontSize: 9,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
-                    )
-                  : Container(
-                      height: 170,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.06),
-                      child: Icon(Icons.menu_book, size: 40,
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: 0.3)),
                     ),
+                  ],
+                ),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -349,19 +404,19 @@ class _BookCard extends StatelessWidget {
                     item.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
                     ),
                   ),
                   if (item.author != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
                       item.author!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.5),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -370,6 +425,32 @@ class _BookCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _coverFallback(ThemeData theme) {
+    return Container(
+      color: theme.colorScheme.primary.withValues(alpha: 0.08),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.menu_book,
+              size: 40, color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.primary.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -431,46 +512,69 @@ class _ArticleCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Card(
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
                 Container(
-                  width: 48, height: 48,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(Icons.article, color: theme.colorScheme.secondary),
+                  child: Icon(Icons.article,
+                      color: theme.colorScheme.secondary),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.secondary
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'ARTICLE',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.secondary,
+                                fontSize: 9,
+                                letterSpacing: 1,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       Text(item.title, maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           )),
                       if (item.description != null) ...[
                         const SizedBox(height: 4),
                         Text(item.description!, maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.6),
+                              color: theme.colorScheme.onSurfaceVariant,
                             )),
                       ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(Icons.open_in_new, size: 18,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.3)),
+                Icon(Icons.arrow_forward_ios, size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
               ],
             ),
           ),

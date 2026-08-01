@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/core/theme/theme.dart';
+import 'package:rever/src/data/providers/preferences_provider.dart';
 import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/providers/progress_providers.dart';
 
@@ -140,6 +141,7 @@ class MeScreen extends ConsumerWidget {
                 title: 'Switch Profile',
                 onTap: () => context.go('/profiles'),
               ),
+              _InterestsTile(),
               _SettingsTile(
                 icon: Icons.tune,
                 title: 'Preferences',
@@ -384,6 +386,32 @@ class _StatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InterestsTile extends ConsumerWidget {
+  const _InterestsTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final prefs = ref.watch(activePreferencesProvider).asData?.value;
+    final topicCount = prefs?.topics.length ?? 0;
+
+    return ListTile(
+      leading: Icon(
+        topicCount > 0 ? Icons.interests : Icons.interests_outlined,
+        color: topicCount > 0 ? theme.colorScheme.primary : null,
+      ),
+      title: const Text('Interests & Goals'),
+      subtitle: Text(
+        topicCount > 0
+            ? '${prefs!.topics.length} topics · ${prefs.goal.isNotEmpty ? prefs.goal : 'no goal yet'}'
+            : 'Personalize what you see',
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.push('/preferences?force=true'),
     );
   }
 }

@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/preferences_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/providers/preferences_provider.dart';
 
 class ExternalContentService {
   final Dio _dio;
@@ -12,16 +14,26 @@ class ExternalContentService {
           receiveTimeout: const Duration(seconds: 15),
         ));
 
-  Future<List<ExploreContent>> discoverBooks({int limit = 10}) async {
-    final topics = ['philosophy', 'science', 'art', 'history', 'psychology'];
-    final topic =
-        topics[DateTime.now().millisecondsSinceEpoch ~/ 60000 % topics.length];
+  Future<List<ExploreContent>> discoverBooks({
+    int limit = 10,
+    String? topic,
+  }) async {
+    const fallbackTopics = [
+      'philosophy',
+      'science',
+      'art',
+      'history',
+      'psychology',
+    ];
+    final effectiveTopic = topic ??
+        fallbackTopics[DateTime.now().millisecondsSinceEpoch ~/ 60000 %
+            fallbackTopics.length];
     final response = await _dio.get(
       'https://openlibrary.org/search.json',
-      queryParameters: {'q': topic, 'limit': limit, 'sort': 'rating'},
+      queryParameters: {'q': effectiveTopic, 'limit': limit, 'sort': 'rating'},
     );
     final docs = response.data['docs'] as List? ?? [];
-    return docs.map((d) => _bookFromDoc(d, topic)).toList();
+    return docs.map((d) => _bookFromDoc(d, effectiveTopic)).toList();
   }
 
   Future<List<ExploreContent>> discoverArticles({int limit = 5}) async {
@@ -53,8 +65,9 @@ class ExternalContentService {
     return docs.map((d) => _bookFromDoc(d)).toList();
   }
 
-  Future<List<ExploreContent>> trending() async {
-    final books = await discoverBooks(limit: 5);
+  Future<List<ExploreContent>> trending({List<String> topics = const []}) async {
+    final topic = topics.isNotEmpty ? topicSearchQuery(topics.first) : null;
+    final books = await discoverBooks(limit: 5, topic: topic);
     final articles = await discoverArticles(limit: 3);
     return [...books, ...articles]..shuffle();
   }
@@ -298,8 +311,11 @@ final externalContentServiceProvider = Provider<ExternalContentService>((ref) {
   return ExternalContentService();
 });
 
-final trendingContentProvider = FutureProvider<List<ExploreContent>>((ref) {
-  return ref.watch(externalContentServiceProvider).trending();
+final trendingContentProvider = FutureProvider<List<ExploreContent>>((ref) async {
+  final prefs = await ref.watch(activePreferencesProvider.future);
+  return ref
+      .watch(externalContentServiceProvider)
+      .trending(topics: prefs?.topics ?? const []);
 });
 
 final searchBooksProvider =
