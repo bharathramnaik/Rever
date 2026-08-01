@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
 import 'package:rever/src/data/services/external_content_service.dart';

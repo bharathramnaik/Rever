@@ -14,8 +14,7 @@ import '../helpers/test_data.dart';
 
 void main() {
   group('Critical User Flow', () {
-    testWidgets('onboarding -> profiles -> home -> explore -> concept',
-        (tester) async {
+    testWidgets('profiles -> home -> explore -> concept', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -48,22 +47,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Should start at onboarding
-      expect(find.text('Learn Anything'), findsOneWidget);
-
-      // Navigate through onboarding to interests
-      for (int i = 0; i < 3; i++) {
-        await tester.tap(find.text('Next'));
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(find.text('Get Started'));
-      await tester.pumpAndSettle();
-
-      // Skip interest selection to reach profiles
-      await tester.tap(find.text('Skip for now'));
-      await tester.pumpAndSettle();
-
-      // Should show profile selection
+      // App starts at profile selection
       expect(find.text("Who's learning?"), findsOneWidget);
 
       // Select first profile
@@ -71,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should be on home screen
-      expect(find.text('Today'), findsOneWidget);
+      expect(find.text('Daily Goal'), findsOneWidget);
     });
 
     testWidgets('explore -> concept navigation works', (tester) async {

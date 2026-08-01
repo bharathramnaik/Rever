@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/core/theme/theme.dart';
 import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/providers/progress_providers.dart';
 
@@ -144,6 +145,7 @@ class MeScreen extends ConsumerWidget {
                 title: 'Preferences',
                 onTap: () => _showPreferencesDialog(context),
               ),
+              _ThemeSettingsTile(),
               _SettingsTile(
                 icon: Icons.notifications_outlined,
                 title: 'Notifications',
@@ -382,6 +384,103 @@ class _StatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ThemeSettingsTile extends ConsumerWidget {
+  const _ThemeSettingsTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider);
+
+    final label = switch (mode) {
+      ReverThemeMode.system => 'Follow Device',
+      ReverThemeMode.light => 'Light',
+      ReverThemeMode.dark => 'Dark',
+    };
+
+    return ListTile(
+      leading: Icon(mode == ReverThemeMode.dark
+          ? Icons.dark_mode_outlined
+          : Icons.light_mode_outlined),
+      title: const Text('Theme'),
+      subtitle: Text(label),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _showThemeDialog(context, ref),
+    );
+  }
+
+  void _showThemeDialog(BuildContext context, WidgetRef ref) {
+    final mode = ref.read(themeModeProvider);
+    final notifier = ref.read(themeModeProvider.notifier);
+
+    void select(ReverThemeMode m) {
+      notifier.setMode(m);
+      Navigator.pop(context);
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('App Theme'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ThemeOption(
+              label: 'Follow Device',
+              subtitle: 'Uses your device dark/light setting',
+              icon: Icons.brightness_auto_outlined,
+              selected: mode == ReverThemeMode.system,
+              onTap: () => select(ReverThemeMode.system),
+            ),
+            _ThemeOption(
+              label: 'Light',
+              icon: Icons.light_mode_outlined,
+              selected: mode == ReverThemeMode.light,
+              onTap: () => select(ReverThemeMode.light),
+            ),
+            _ThemeOption(
+              label: 'Dark',
+              icon: Icons.dark_mode_outlined,
+              selected: mode == ReverThemeMode.dark,
+              onTap: () => select(ReverThemeMode.dark),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeOption extends StatelessWidget {
+  final String label;
+  final String? subtitle;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeOption({
+    required this.label,
+    this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      onTap: onTap,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: theme.colorScheme.primary),
+      title: Text(label),
+      subtitle: subtitle == null ? null : Text(subtitle!),
+      trailing: selected
+          ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
+          : null,
     );
   }
 }

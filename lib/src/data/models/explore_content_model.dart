@@ -26,4 +26,6 @@ class ExploreContent {
     this.subjects = const [],
     this.keyPoints = const [],
   });
+
+  String get sourceLabel => source == ContentSource.book ? 'BOOK' : 'ARTICLE';
 }

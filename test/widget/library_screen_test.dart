@@ -29,7 +29,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Your Library'), findsOneWidget);
+      await tester.tap(find.text('Saved'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Library'), findsOneWidget);
       expect(find.text('Transformer Architecture'), findsOneWidget);
       expect(find.text('Quiz'), findsOneWidget);
     });
@@ -48,6 +51,9 @@ void main() {
         ),
       );
 
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Saved'));
       await tester.pumpAndSettle();
 
       expect(find.text('Nothing saved yet'), findsOneWidget);

@@ -3000,7 +3000,6 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 ed25519_edwards
-google_fonts
 rxdart
 
                                  Apache License
@@ -11767,6 +11766,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 --------------------------------------------------------------------------------
 go_router
+google_fonts
 
 Copyright 2013 The Flutter Authors
 

@@ -287,11 +287,19 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
               Icon(Icons.check_circle_outline,
                   size: 64,
                   color: _colorFor(widget.item.source).withValues(alpha: 0.7)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Text(
-                'You\'ve finished this item!',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                'Well done!',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You\'ve finished this item',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
               ),
               const SizedBox(height: 24),
@@ -382,7 +390,9 @@ class _StashSlide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final isIdea = stash.type == StashType.idea;
 
     return Container(
       decoration: BoxDecoration(
@@ -390,7 +400,7 @@ class _StashSlide extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            color.withValues(alpha: 0.25),
+            color.withValues(alpha: 0.22),
             Colors.black,
           ],
         ),
@@ -401,7 +411,7 @@ class _StashSlide extends StatelessWidget {
             if (item.thumbnailUrl != null)
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.08,
+                  opacity: 0.07,
                   child: Image.network(
                     item.thumbnailUrl!,
                     fit: BoxFit.cover,
@@ -414,11 +424,26 @@ class _StashSlide extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StashBadge(
-                    label: stash.type == StashType.overview
-                        ? 'About'
-                        : 'Idea ${index}',
-                    color: color,
+                  Row(
+                    children: [
+                      _StashBadge(
+                        label: isIdea ? 'IDEA ${index}' : 'ABOUT',
+                        color: color,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.sourceLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelSmall?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            letterSpacing: 1.1,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   Expanded(
@@ -428,46 +453,53 @@ class _StashSlide extends StatelessWidget {
                         children: [
                           Text(
                             stash.content,
-                            style: textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: stash.type == StashType.overview
-                                  ? FontWeight.w400
-                                  : FontWeight.w500,
-                              height: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          if (stash.type == StashType.idea &&
-                              item.author != null)
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: color.withValues(alpha: 0.5),
-                                    width: 3,
+                            style: isIdea
+                                ? textTheme.headlineMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
+                                  )
+                                : textTheme.titleLarge?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.55,
                                   ),
+                          ),
+                          const SizedBox(height: 28),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(
+                                  color: color.withValues(alpha: 0.5),
+                                  width: 3,
                                 ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    style: textTheme.titleSmall?.copyWith(
-                                      color: Colors.white.withValues(alpha: 0.7),
-                                    ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: textTheme.titleSmall?.copyWith(
+                                    color:
+                                        Colors.white.withValues(alpha: 0.75),
+                                    height: 1.3,
                                   ),
+                                ),
+                                if (item.author != null) ...[
                                   const SizedBox(height: 4),
                                   Text(
                                     item.author!,
                                     style: textTheme.bodySmall?.copyWith(
-                                      color: color.withValues(alpha: 0.7),
+                                      color: color.withValues(alpha: 0.8),
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
                     ),
