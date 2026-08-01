@@ -21,8 +21,6 @@ class ContentReelScreen extends ConsumerStatefulWidget {
 class _ContentReelScreenState extends ConsumerState<ContentReelScreen> {
   late int _itemIndex;
   late PageController _pageController;
-  int _stashCount = 0;
-  int _stashIndex = 0;
 
   @override
   void initState() {
@@ -41,7 +39,6 @@ class _ContentReelScreenState extends ConsumerState<ContentReelScreen> {
     if (index < 0 || index >= widget.items.length) return;
     setState(() {
       _itemIndex = index;
-      _stashIndex = 0;
     });
     _pageController.jumpToPage(0);
   }
