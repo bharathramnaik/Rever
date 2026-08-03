@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,6 +11,8 @@ import 'src/core/services/firebase_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  AppEnvironment.validate();
+
   await Supabase.initialize(
     url: AppEnvironment.supabaseUrl,
     publishableKey: AppEnvironment.supabasePublishableKey,
@@ -17,7 +20,8 @@ Future<void> main() async {
 
   await FirebaseService.initialize();
 
-  if (AppEnvironment.isDev) {
+  // Dev auto sign-in: only in debug builds AND when DEV_MODE is explicitly set.
+  if (kDebugMode && AppEnvironment.isDev) {
     await _autoSignIn();
   }
 

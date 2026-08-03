@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+final _logger = Logger();
 
 final apiClientProvider = Provider<Dio>((ref) {
   final supabase = Supabase.instance.client;
@@ -26,7 +29,11 @@ final apiClientProvider = Provider<Dio>((ref) {
     },
     onError: (error, handler) {
       if (error.response?.statusCode == 401) {
+        _logger.w('API 401 Unauthorized — signing out. ${error.requestOptions.path}');
         supabase.auth.signOut();
+      } else {
+        _logger.e('API error ${error.response?.statusCode}: ${error.requestOptions.path}',
+            error: error.message);
       }
       handler.next(error);
     },

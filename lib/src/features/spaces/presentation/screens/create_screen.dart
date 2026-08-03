@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/idea_card_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/providers/library_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
@@ -120,8 +122,36 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
       );
       final stashes = service.generateStashes(item);
       setState(() => _generatedCards = stashes);
-    } catch (_) {}
-    setState(() => _processing = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to process source: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _processing = false);
+  }
+
+  Future<void> _saveToLibrary(BuildContext sheetContext) async {
+    final cards = _generatedCards
+        .map((c) => IdeaCard(id: '', takeaway: c.title, body: c.content))
+        .toList();
+    try {
+      await ref.read(ideaCardRepositoryProvider).saveCards(cards);
+      if (mounted) {
+        Navigator.pop(sheetContext);
+        setState(() => _generatedCards = []);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${cards.length} ideas saved to Library')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e')),
+        );
+      }
+    }
   }
 
   void _showReviewSheet() {
@@ -215,7 +245,7 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => Navigator.pop(ctx),
+                  onPressed: () => _saveToLibrary(ctx),
                   icon: const Icon(Icons.check),
                   label: const Text('Save to Library'),
                 ),

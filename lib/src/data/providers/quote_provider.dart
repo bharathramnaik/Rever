@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/core/providers/auth_provider.dart';
+import 'package:rever/src/core/utils/app_logger.dart';
 import 'package:rever/src/data/models/quote_model.dart';
 
 final _dio = Dio(BaseOptions(
@@ -18,7 +19,9 @@ final randomQuoteProvider = FutureProvider<Quote?>((ref) async {
         .limit(1)
         .maybeSingle();
     if (data != null) return Quote.fromJson(data);
-  } catch (_) {}
+  } catch (e) {
+    appLogger.w('Supabase quote fetch failed, trying Quotable', error: e);
+  }
   try {
     final response = await _dio.get(
       'https://api.quotable.io/quotes/random?maxLength=200',
@@ -33,7 +36,9 @@ final randomQuoteProvider = FutureProvider<Quote?>((ref) async {
         category: (q['tags'] as List?)?.firstOrNull as String?,
       );
     }
-  } catch (_) {}
+  } catch (e) {
+    appLogger.w('Quotable fetch failed, trying ZenQuotes', error: e);
+  }
   try {
     final response = await _dio.get(
       'https://zenquotes.io/api/random',
@@ -47,6 +52,8 @@ final randomQuoteProvider = FutureProvider<Quote?>((ref) async {
         author: q['a'] as String? ?? 'Unknown',
       );
     }
-  } catch (_) {}
+  } catch (e) {
+    appLogger.e('All quote sources failed', error: e);
+  }
   return null;
 });

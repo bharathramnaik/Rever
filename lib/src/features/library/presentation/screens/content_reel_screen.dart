@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class ContentReelScreen extends ConsumerStatefulWidget {
@@ -52,6 +54,11 @@ class _ContentReelScreenState extends ConsumerState<ContentReelScreen> {
         item: item,
         items: widget.items,
         onComplete: () {
+          // Log streak activity for the active profile on completing a card set.
+          final profileId = ref.read(activeProfileIdProvider);
+          if (profileId != null) {
+            logStreakActivity(ref, profileId);
+          }
           if (_itemIndex + 1 < widget.items.length) {
             _goToItem(_itemIndex + 1);
           } else {
@@ -121,6 +128,11 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
   @override
   Widget build(BuildContext context) {
     final stashesAsync = ref.watch(contentStashesProvider(widget.item));
+    final profileId = ref.watch(activeProfileIdProvider);
+    final streakAsync = profileId != null
+        ? ref.watch(streakProvider(profileId))
+        : const AsyncValue.data(null);
+    final streakDays = streakAsync.asData?.value?.currentStreak ?? 0;
 
     return Stack(
       children: [
@@ -202,7 +214,7 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
                           color: Colors.orangeAccent.withValues(alpha: 0.9)),
                       const SizedBox(width: 4),
                       Text(
-                        '3 day streak',
+                        '$streakDays day streak',
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 11),

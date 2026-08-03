@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/services/ai_api_service.dart';
+
 /// AI Tutor modes — from Initial flow.txt §23
 enum TutorMode {
   explain('Explain', Icons.psychology),
@@ -19,6 +21,16 @@ enum TutorMode {
   final String label;
   final IconData icon;
   const TutorMode(this.label, this.icon);
+
+  /// Backend mode key (lowercase snake form expected by the AI service).
+  String get apiMode => switch (this) {
+        TutorMode.goDeeper => 'godeeper',
+        TutorMode.showVisually => 'showvisually',
+        TutorMode.quizMe => 'quizme',
+        TutorMode.helpRemember => 'helpremember',
+        TutorMode.followUp => 'followup',
+        _ => name.toLowerCase(),
+      };
 }
 
 /// Simple chat message model
@@ -84,19 +96,41 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
 
     _scrollToBottom();
 
-    // Simulate AI response (placeholder until backend is connected)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          _messages.add(_ChatMessage(
-            content: _generatePlaceholderResponse(text, mode),
-            isUser: false,
-          ));
-          _isThinking = false;
-        });
-        _scrollToBottom();
-      }
-    });
+    _fetchAiReply(text, mode);
+  }
+
+  Future<void> _fetchAiReply(String text, TutorMode? mode) async {
+    final recent = _messages.where((m) => m.content.isNotEmpty).toList();
+    final start = recent.length > 6 ? recent.length - 6 : 0;
+    final history = recent
+        .skip(start)
+        .map(
+          (m) => AiHistoryEntry(role: m.isUser ? 'user' : 'assistant', content: m.content),
+        )
+        .toList();
+
+    String reply;
+    try {
+      final result = await ref.read(aiApiServiceProvider).chat(
+            message: mode != null && text.isEmpty ? mode.label : text,
+            mode: mode?.apiMode ?? 'explain',
+            history: history,
+          );
+      reply = result.reply.isNotEmpty
+          ? result.reply
+          : _generatePlaceholderResponse(text, mode);
+    } catch (_) {
+      // Backend unreachable — keep the app functional with local response.
+      reply = _generatePlaceholderResponse(text, mode);
+    }
+
+    if (mounted) {
+      setState(() {
+        _messages.add(_ChatMessage(content: reply, isUser: false));
+        _isThinking = false;
+      });
+      _scrollToBottom();
+    }
   }
 
   String _generatePlaceholderResponse(String text, TutorMode? mode) {

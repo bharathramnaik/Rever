@@ -34,6 +34,23 @@ class IdeaCardRepository {
     });
   }
 
+  /// Persist generated idea cards (from the Create flow) to Supabase.
+  /// Returns the inserted cards with their generated IDs.
+  Future<List<IdeaCard>> saveCards(List<IdeaCard> cards) async {
+    if (cards.isEmpty) return [];
+    final rows = cards
+        .map((c) => {
+              'takeaway': c.takeaway,
+              'body': c.body,
+              if (c.sourceId != null) 'source_id': c.sourceId,
+              if (c.conceptId != null) 'concept_id': c.conceptId,
+              if (c.quote != null) 'quote': c.quote,
+            })
+        .toList();
+    final data = await _client.from('idea_cards').insert(rows).select();
+    return (data as List).map((e) => IdeaCard.fromJson(e)).toList();
+  }
+
   Future<List<IdeaCard>> fetchByStash(String stashId) async {
     final data = await _client
         .from('stash_items')

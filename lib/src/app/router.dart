@@ -20,10 +20,32 @@ import '../features/sources/presentation/screens/source_detail_screen.dart';
 import '../features/ai_tutor/presentation/screens/ai_tutor_screen.dart';
 import '../features/review/presentation/screens/review_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../core/config/environment.dart';
+import '../core/providers/auth_provider.dart';
+import 'package:flutter/foundation.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authStateProvider);
+
   return GoRouter(
     initialLocation: '/profiles',
+    redirect: (context, state) {
+      // Skip auth enforcement in debug/dev — tests and local dev use demo profiles.
+      if (kDebugMode || AppEnvironment.isDev) return null;
+
+      final isLoggedIn = authState.asData?.value != null;
+      final path = state.uri.path;
+      final isPublicRoute =
+          path == '/auth' || path == '/profiles' || path == '/onboarding';
+
+      // Not logged in → force to auth (unless already on a public route).
+      if (!isLoggedIn && !isPublicRoute) return '/auth';
+
+      // Logged in but on auth page → send to profiles.
+      if (isLoggedIn && path == '/auth') return '/profiles';
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/onboarding',
