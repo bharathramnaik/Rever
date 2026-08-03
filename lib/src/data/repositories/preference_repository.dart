@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/environment.dart';
@@ -18,7 +19,9 @@ class PreferenceRepository {
             .eq('profile_id', profileId)
             .maybeSingle();
         if (data != null) return PreferencesModel.fromJson(data);
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('[preference] fetch failed: $e\n$st');
+      }
     }
     return _memory[profileId];
   }
@@ -29,7 +32,9 @@ class PreferenceRepository {
         await _client
             .from('preferences')
             .upsert(preferences.toJson());
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('[preference] save failed: $e\n$st');
+      }
     }
     _memory[preferences.profileId] = preferences;
   }

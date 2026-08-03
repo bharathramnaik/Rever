@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/providers/concept_providers.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
@@ -40,7 +41,18 @@ class _ConceptScreenState extends ConsumerState<ConceptScreen> {
         ),
         actions: [
           _BookmarkButton(conceptId: widget.conceptId),
-          IconButton(icon: const Icon(Icons.share), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              final async = ref.read(conceptBySlugProvider(widget.conceptId));
+              async.whenOrNull(data: (c) {
+                if (c != null) {
+                  launchUrl(Uri.parse(
+                      'https://rever.app/concept/${c.slug}'));
+                }
+              });
+            },
+          ),
         ],
       ),
       body: conceptAsync.when(

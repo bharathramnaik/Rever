@@ -35,17 +35,25 @@ Future<void> main() async {
 }
 
 Future<void> _autoSignIn() async {
+  final client = Supabase.instance.client;
+  if (client.auth.currentSession != null) return;
   try {
-    await Supabase.instance.client.auth.signInWithPassword(
+    await client.auth.signInWithPassword(
       email: 'dev@rever.app',
       password: 'devpassword123',
     );
-  } catch (_) {
+  } on AuthException catch (e, st) {
+    debugPrint('[dev][auth] signIn failed: $e\n$st');
     try {
-      await Supabase.instance.client.auth.signUp(
+      await client.auth.signUp(
         email: 'dev@rever.app',
         password: 'devpassword123',
       );
-    } catch (_) {}
+    } on AuthException catch (e, st) {
+      debugPrint('[dev][auth] signUp also failed: $e\n$st');
+    }
+  } catch (e, st) {
+    debugPrint('[dev][auth] unexpected error: $e\n$st');
   }
 }
+

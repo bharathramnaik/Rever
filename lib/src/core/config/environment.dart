@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class AppEnvironment {
   AppEnvironment._();
 
@@ -56,3 +58,4 @@ class AppEnvironment {
     }
   }
 }
+
