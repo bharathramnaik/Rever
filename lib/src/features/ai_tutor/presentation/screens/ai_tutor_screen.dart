@@ -38,12 +38,14 @@ class _ChatMessage {
   final String content;
   final bool isUser;
   final TutorMode? mode;
+  final List<GroundingSource> groundingSources;
   final DateTime timestamp;
 
   _ChatMessage({
     required this.content,
     required this.isUser,
     this.mode,
+    this.groundingSources = const [],
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 }
@@ -119,6 +121,18 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
       reply = result.reply.isNotEmpty
           ? result.reply
           : _generatePlaceholderResponse(text, mode);
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(
+            content: reply,
+            isUser: false,
+            groundingSources: result.groundingSources,
+          ));
+          _isThinking = false;
+        });
+        _scrollToBottom();
+        return;
+      }
     } catch (_) {
       // Backend unreachable — keep the app functional with local response.
       reply = _generatePlaceholderResponse(text, mode);
@@ -318,13 +332,42 @@ class _ChatBubble extends StatelessWidget {
             bottomRight: Radius.circular(message.isUser ? 4 : 16),
           ),
         ),
-        child: Text(
-          message.content,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: message.isUser
-                ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSurface,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message.content,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: message.isUser
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+            if (!message.isUser && message.groundingSources.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              Text(
+                '📚 Sources',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              ...message.groundingSources.take(3).map((s) => Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '• ${s.title}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.7),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )),
+            ],
+          ],
         ),
       ),
     );

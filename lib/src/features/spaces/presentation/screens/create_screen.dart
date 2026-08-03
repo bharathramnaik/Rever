@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/services/ai_api_service.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/idea_card_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
@@ -108,20 +109,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
     if (text.trim().isEmpty) return;
     setState(() => _processing = true);
     try {
-      final service = ref.read(externalContentServiceProvider);
-      await Future.delayed(const Duration(seconds: 2));
-      final item = await service.fetchDetail(
-        ExploreContent(
-          id: 'generated',
-          title: text.length > 60
-              ? '${text.substring(0, 60)}...'
-              : text,
-          description: text,
-          source: ContentSource.article,
-        ),
-      );
-      final stashes = service.generateStashes(item);
-      setState(() => _generatedCards = stashes);
+      List<StashCard> cards = await _generateCards(text);
+      setState(() => _generatedCards = cards);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -132,19 +121,58 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
     if (mounted) setState(() => _processing = false);
   }
 
+  /// Generates idea cards from source text using the AI backend when
+  /// available; otherwise falls back to the local deterministic splitter.
+  Future<List<StashCard>> _generateCards(String text) async {
+    final title = text.length > 60 ? '${text.substring(0, 60)}...' : text;
+    final aiService = ref.read(aiApiServiceProvider);
+
+    if (await aiService.isAvailable()) {
+      try {
+        final generated = await aiService.generateCards(
+          title: title,
+          sourceText: text,
+        );
+        if (generated.isNotEmpty) {
+          return generated
+              .map((c) => StashCard(
+                    title: c.takeaway,
+                    content: c.body,
+                    type: c.type == 'overview'
+                        ? StashType.overview
+                        : StashType.idea,
+                  ))
+              .toList();
+        }
+      } catch (_) {
+        // Backend error — fall through to local generation.
+      }
+    }
+
+    final service = ref.read(externalContentServiceProvider);
+    final item = await service.fetchDetail(
+      ExploreContent(
+        id: 'generated',
+        title: title,
+        description: text,
+        source: ContentSource.article,
+      ),
+    );
+    return service.generateStashes(item);
+  }
+
   Future<void> _saveToLibrary(BuildContext sheetContext) async {
     final cards = _generatedCards
         .map((c) => IdeaCard(id: '', takeaway: c.title, body: c.content))
         .toList();
     try {
       await ref.read(ideaCardRepositoryProvider).saveCards(cards);
-      if (mounted) {
-        Navigator.pop(sheetContext);
-        setState(() => _generatedCards = []);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${cards.length} ideas saved to Library')),
-        );
-      }
+      if (!mounted || !sheetContext.mounted) return;
+      Navigator.pop(sheetContext);
+      setState(() => _generatedCards = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${cards.length} ideas saved to Library')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
