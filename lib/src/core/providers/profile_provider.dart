@@ -26,27 +26,31 @@ final activeProfileProvider = FutureProvider<ProfileModel?>((ref) async {
 });
 
 final profilesProvider = FutureProvider<List<ProfileModel>>((ref) async {
-  if (!AppEnvironment.isDev) {
-    final client = ref.watch(supabaseProvider);
-    final user = client.auth.currentUser;
-    List<dynamic> data;
-    if (user != null) {
-      data = await client
-          .from('profiles')
-          .select()
-          .eq('account_id', user.id)
-          .order('created_at', ascending: true);
-    } else {
-      data = await client
-          .from('profiles')
-          .select()
-          .order('created_at', ascending: true);
-    }
-    if (data.isNotEmpty) {
-      return data.map((e) => ProfileModel.fromJson(e)).toList();
-    }
+  // Demo profiles are only valid in dev mode. In production, leaking them
+  // (e.g. when the anon key has no rows) sends string ids like
+  // `dev-bharath` into UUID-typed `profile_id` columns, which Postgres
+  // rejects with `invalid input syntax for type uuid` (HTTP 400).
+  if (AppEnvironment.isDev) return _demoProfiles;
+
+  final client = ref.watch(supabaseProvider);
+  final user = client.auth.currentUser;
+  List<dynamic> data;
+  if (user != null) {
+    data = await client
+        .from('profiles')
+        .select()
+        .eq('account_id', user.id)
+        .order('created_at', ascending: true);
+  } else {
+    data = await client
+        .from('profiles')
+        .select()
+        .order('created_at', ascending: true);
   }
-  return _demoProfiles;
+  if (data.isNotEmpty) {
+    return data.map((e) => ProfileModel.fromJson(e)).toList();
+  }
+  return <ProfileModel>[];
 });
 
 final _demoProfiles = [

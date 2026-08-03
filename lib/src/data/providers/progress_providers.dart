@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/config/environment.dart';
 import 'package:rever/src/core/providers/auth_provider.dart';
 
 /// Count of concepts the user has interacted with
 final conceptsCompletedProvider =
     FutureProvider.family<int, String>((ref, profileId) async {
+  if (AppEnvironment.isDev) return 0;
   final client = ref.watch(supabaseProvider);
   try {
     final data = await client
@@ -22,6 +24,7 @@ final conceptsCompletedProvider =
 /// Total learning time in minutes
 final totalLearningTimeProvider =
     FutureProvider.family<int, String>((ref, profileId) async {
+  if (AppEnvironment.isDev) return 0;
   final client = ref.watch(supabaseProvider);
   try {
     final data = await client
@@ -41,6 +44,7 @@ final totalLearningTimeProvider =
 /// Count of concepts mastered (mastery_level > 0.7)
 final conceptsMasteredProvider =
     FutureProvider.family<int, String>((ref, profileId) async {
+  if (AppEnvironment.isDev) return 0;
   final client = ref.watch(supabaseProvider);
   try {
     final data = await client

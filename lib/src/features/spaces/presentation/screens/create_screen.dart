@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/config/environment.dart';
+import 'package:rever/src/core/services/duplicate_detector.dart';
+import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/idea_card_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/providers/idea_card_providers.dart';
+import 'package:rever/src/data/providers/idea_relationship_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class CreateScreen extends ConsumerStatefulWidget {
@@ -18,7 +24,9 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
   final _noteController = TextEditingController();
   final _youtubeController = TextEditingController();
   bool _processing = false;
+  bool _processingFailed = false;
   List<StashCard> _generatedCards = [];
+  List<IdeaCard> _generatedIdeas = [];
 
   @override
   void initState() {
@@ -104,24 +112,181 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
 
   Future<void> _processSource(String text) async {
     if (text.trim().isEmpty) return;
-    setState(() => _processing = true);
+    setState(() {
+      _processing = true;
+      _processingFailed = false;
+      _generatedCards = [];
+      _generatedIdeas = [];
+    });
+
+    final generator = ref.read(contentGeneratorProvider);
     try {
+      final ideas = await generator.generate(text);
+      setState(() {
+        _generatedIdeas = ideas;
+        _generatedCards = ideas
+            .map((i) => StashCard(
+                title: i.takeaway, content: i.body, type: StashType.idea))
+            .toList();
+      });
+    } on Exception catch (e, st) {
+      debugPrint('[create] LLM generation failed: $e\n$st');
+      // Fallback: heuristic generation so the UI always shows something.
       final service = ref.read(externalContentServiceProvider);
-      await Future.delayed(const Duration(seconds: 2));
-      final item = await service.fetchDetail(
-        ExploreContent(
-          id: 'generated',
-          title: text.length > 60
-              ? '${text.substring(0, 60)}...'
-              : text,
-          description: text,
-          source: ContentSource.article,
-        ),
+      final item = ExploreContent(
+        id: 'generated',
+        title: text.length > 60 ? '${text.substring(0, 60)}...' : text,
+        description: text,
+        source: ContentSource.article,
       );
       final stashes = service.generateStashes(item);
-      setState(() => _generatedCards = stashes);
-    } catch (_) {}
+      setState(() {
+        _generatedCards = stashes;
+        _processingFailed = true;
+      });
+    }
     setState(() => _processing = false);
+  }
+
+  Future<void> _saveToLibrary() async {
+    if (_generatedIdeas.isEmpty) {
+      // Fallback cards (heuristic) synthesize IdeaCards.
+      _generatedIdeas = _generatedCards
+          .map((c) => IdeaCard(
+              id: '${DateTime.now().millisecondsSinceEpoch}',
+              takeaway: c.title,
+              body: c.content))
+          .toList();
+    }
+    if (_generatedIdeas.isEmpty) return;
+    final profileId = ref.read(activeProfileIdProvider);
+    if (profileId == null) return;
+
+    // Sprint 5 (flow.txt §7): duplicate detection + quality gate before save.
+    final kept = await _dedupeGenerated();
+    if (kept.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All ideas already exist in your library')),
+      );
+      return;
+    }
+    _generatedIdeas = kept;
+
+    // Dev mode: demo profile ids (e.g. `dev-bharath`) are not real UUIDs, so
+    // profile-scoped Supabase writes throw `invalid input syntax for type uuid`
+    // (22P02). Persist to the device cache only (dev bypasses Supabase).
+    if (AppEnvironment.isDev) {
+      final store = await ref.read(localIdeaStoreProvider.future);
+      for (final card in _generatedIdeas) {
+        await store.save(card);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved to Library')),
+      );
+      return;
+    }
+
+    try {
+      final inserted = await ref
+          .read(ideaCardRepositoryProvider)
+          .saveGenerated(profileId, _generatedIdeas);
+      _generateGraphEdges(inserted);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved to Library')),
+      );
+    } catch (e, st) {
+      debugPrint('[create] save to Supabase failed, using device cache: $e\n$st');
+      final store = await ref.read(localIdeaStoreProvider.future);
+      for (final card in _generatedIdeas) {
+        await store.save(card);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Saved to this device (syncs when online)')),
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _generatedCards = [];
+      _generatedIdeas = [];
+    });
+    ref.invalidate(localIdeaCardsProvider);
+  }
+
+  /// Fire-and-forget AI curation of knowledge-graph edges for newly created
+  /// cards (flow.txt §5). Non-fatal: failures never block the save flow.
+  Future<void> _generateGraphEdges(List<IdeaCard> inserted) async {
+    try {
+      final repo = ref.read(ideaCardRepositoryProvider);
+      final generator = ref.read(relationshipGeneratorProvider);
+      for (final card in inserted) {
+        final candidates = await repo.fetchFeed(limit: 15);
+        if (candidates.isEmpty) return;
+        final texts = [
+          for (final c in candidates)
+            (c.takeaway + ': ' + c.body).replaceAll('\n', ' ').trim(),
+        ];
+        final edges = await generator.generate(card.body, texts);
+        if (edges.isNotEmpty) {
+          await ref
+              .read(ideaRelationshipRepositoryProvider)
+              .insertGenerated(
+                card.id,
+                edges,
+                [for (final c in candidates) c.id],
+              );
+        }
+      }
+    } catch (e) {
+      debugPrint('[graph] edge generation skipped (non-fatal): $e');
+    }
+  }
+
+  /// Filters generated ideas against existing cards (flow.txt §7): near-dupes
+  /// are dropped, surviving cards are re-scored by the structural quality gate.
+  Future<List<IdeaCard>> _dedupeGenerated() async {
+    try {
+      final List<String> existingTexts;
+      if (AppEnvironment.isDev) {
+        final store = await ref.read(localIdeaStoreProvider.future);
+        existingTexts = [
+          for (final c in await store.loadAll()) '${c.takeaway} ${c.body}',
+        ];
+      } else {
+        existingTexts = [
+          for (final c in await ref.read(ideaCardRepositoryProvider).fetchFeed(limit: 100))
+            '${c.takeaway} ${c.body}',
+        ];
+      }
+      const detector = DuplicateDetector();
+      final kept = <IdeaCard>[];
+      for (final card in _generatedIdeas) {
+        if (detector.isDuplicate('${card.takeaway} ${card.body}', existingTexts)) {
+          continue;
+        }
+        if (card.qualityScore <= 0) {
+          kept.add(IdeaCard(
+            id: card.id,
+            sourceId: card.sourceId,
+            conceptId: card.conceptId,
+            takeaway: card.takeaway,
+            body: card.body,
+            qualityScore: card.takeaways.isNotEmpty ? 0.6 : 0.3,
+            tags: card.tags,
+          ));
+        } else {
+          kept.add(card);
+        }
+      }
+      return kept;
+    } catch (e) {
+      debugPrint('[create] dedupe skipped (non-fatal): $e');
+      return _generatedIdeas;
+    }
   }
 
   void _showReviewSheet() {
@@ -163,6 +328,13 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
                             .onSurface
                             .withValues(alpha: 0.5),
                       )),
+              if (_processingFailed) ...[
+                const SizedBox(height: 8),
+                Text('Showing heuristic fallbacks. Connect an LLM key for AI.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.tertiary,
+                        )),
+              ],
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
@@ -215,8 +387,8 @@ class _CreateScreenState extends ConsumerState<CreateScreen>
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.check),
+                  onPressed: () => _saveToLibrary(),
+                  icon: const Icon(Icons.bookmark_added),
                   label: const Text('Save to Library'),
                 ),
               ),

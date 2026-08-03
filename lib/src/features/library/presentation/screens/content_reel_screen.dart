@@ -1,8 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/config/environment.dart';
+import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
+import 'package:rever/src/data/models/idea_card_model.dart';
 import 'package:rever/src/data/models/stash_card_model.dart';
+import 'package:rever/src/data/providers/idea_card_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
+import 'package:rever/src/data/providers/signal_providers.dart';
+import 'package:rever/src/features/library/presentation/widgets/related_ideas_section.dart';
+import 'package:rever/src/data/providers/idea_relationship_providers.dart';
 
 class ContentReelScreen extends ConsumerStatefulWidget {
   final List<ExploreContent> items;
@@ -139,8 +149,14 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
               itemCount: stashes.length + 1,
               onPageChanged: (i) {
                 if (i == stashes.length) {
+                  _recordSignal('finished');
                   widget.onComplete();
                 } else {
+                  if (i > _current) {
+                    _recordSignal('skipped', payload: {
+                      'from_index': _current,
+                    });
+                  }
                   setState(() => _current = i);
                 }
               },
@@ -229,6 +245,13 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
           ),
       ],
     );
+  }
+
+  void _recordSignal(String type, {Map<String, dynamic>? payload}) {
+    ref.read(signalRecorderProvider).record(
+          type,
+          payload: {'source_id': widget.item.id, ...?payload},
+        );
   }
 
   Widget _buildEmptyFallback() {
@@ -334,9 +357,151 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
       ),
     );
   }
-
   Color _colorFor(ContentSource source) {
     return source == ContentSource.book ? Colors.amber : Colors.cyan;
+  }
+}
+
+class _StashButton extends ConsumerStatefulWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final Color color;
+  final ExploreContent item;
+  final StashCard stash;
+
+  const _StashButton({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.color,
+    required this.item,
+    required this.stash,
+  });
+
+  @override
+  ConsumerState<_StashButton> createState() => _StashButtonState();
+}
+
+class _StashButtonState extends ConsumerState<_StashButton>
+    with SingleTickerProviderStateMixin {
+  bool _saved = false;
+  late AnimationController _anim;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scale = Tween<double>(begin: 1, end: 1.4).animate(
+      CurvedAnimation(parent: _anim, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final profileId = ref.read(activeProfileIdProvider);
+    if (profileId == null) {
+      _snack('Select a profile to stash');
+      return;
+    }
+    final card = IdeaCard(
+      id: '${widget.item.id}-${widget.stash.content.hashCode}',
+      sourceId: widget.item.id,
+      conceptId: null,
+      takeaway: widget.stash.title,
+      body: widget.stash.content,
+    );
+
+    // Dev mode: demo profile ids are not real UUIDs, so profile-scoped
+    // Supabase writes would throw `invalid input syntax for type uuid`
+    // (22P02). Persist to the device cache only (dev bypasses Supabase).
+    if (AppEnvironment.isDev) {
+      final store = await ref.read(localIdeaStoreProvider.future);
+      await store.save(card);
+      ref.invalidate(localIdeaCardsProvider);
+      _anim.forward(from: 0);
+      setState(() => _saved = true);
+      _snack('Saved to Stash');
+      return;
+    }
+
+    try {
+      await ref
+          .read(ideaCardRepositoryProvider)
+          .saveGenerated(profileId, [card]);
+      _didSave();
+    } catch (e, st) {
+      debugPrint('[reel] stash save failed, using device cache: $e\n$st');
+      final store = await ref.read(localIdeaStoreProvider.future);
+      await store.save(card);
+      _didSave();
+    }
+  }
+
+  void _didSave() {
+    _anim.forward(from: 0);
+    setState(() => _saved = true);
+    _snack('Saved to Stash');
+    ref.read(signalRecorderProvider).record('saved', payload: {
+      'source_id': widget.item.id,
+    });
+    ref.invalidate(localIdeaCardsProvider);
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _saved ? null : _save,
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _saved
+                    ? widget.color.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                _saved ? widget.activeIcon : widget.icon,
+                color: _saved ? widget.color : Colors.white.withValues(alpha: 0.7),
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _saved ? 'Saved' : widget.label,
+              style: TextStyle(
+                color: _saved
+                    ? widget.color.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+                fontWeight: _saved ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -370,7 +535,7 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
-class _StashSlide extends StatelessWidget {
+class _StashSlide extends ConsumerStatefulWidget {
   final StashCard stash;
   final ExploreContent item;
   final int index;
@@ -386,9 +551,61 @@ class _StashSlide extends StatelessWidget {
   });
 
   @override
+  ConsumerState<_StashSlide> createState() => _StashSlideState();
+}
+
+class _StashSlideState extends ConsumerState<_StashSlide> {
+  Timer? _dwellTimer;
+  bool _openedRecorded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // flow.txt §3: opened + dwelled (5s) signals per slide.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _openedRecorded) return;
+      _openedRecorded = true;
+      ref.read(signalRecorderProvider).record(
+            'opened',
+            payload: {
+              'source_id': widget.item.id,
+              'slide_index': widget.index,
+            },
+          );
+    });
+    _dwellTimer = Timer(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      ref.read(signalRecorderProvider).record(
+            'dwelled',
+            payload: {
+              'source_id': widget.item.id,
+              'slide_index': widget.index,
+            },
+          );
+    });
+  }
+
+  @override
+  void dispose() {
+    _dwellTimer?.cancel();
+    super.dispose();
+  }
+
+  void _recordSignal(String type, {Map<String, dynamic>? payload}) {
+    ref.read(signalRecorderProvider).record(
+          type,
+          payload: {'source_id': widget.item.id, ...?payload},
+        );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final stash = widget.stash;
+    final item = widget.item;
+    final color = widget.color;
+    final index = widget.index;
     final isIdea = stash.type == StashType.idea;
 
     return Container(
@@ -497,6 +714,13 @@ class _StashSlide extends StatelessWidget {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          RelatedIdeasSection(
+                            seed: RelatedSeed(
+                              sourceId: item.id,
+                              conceptId: null,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -530,22 +754,32 @@ class _StashSlide extends StatelessWidget {
                           activeIcon: Icons.favorite,
                           label: 'Like',
                           color: Colors.redAccent,
+                          onActivate: () =>
+                              _recordSignal('liked'),
                         ),
                         _ReactionButton(
                           icon: Icons.whatshot_outlined,
                           activeIcon: Icons.whatshot,
                           label: 'Mind Blown',
                           color: Colors.orangeAccent,
+                          onActivate: () =>
+                              _recordSignal('mind_blown'),
                         ),
                         _ReactionButton(
                           icon: Icons.lightbulb_outline,
                           activeIcon: Icons.lightbulb,
                           label: 'Useful',
                           color: Colors.amberAccent,
+                          onActivate: () =>
+                              _recordSignal('actionable'),
                         ),
-                        _ActionButton(
+                        _StashButton(
                           icon: Icons.bookmark_outline,
+                          activeIcon: Icons.bookmark,
                           label: 'Stash',
+                          color: Colors.greenAccent,
+                          item: item,
+                          stash: stash,
                         ),
                       ],
                     ),
@@ -666,12 +900,14 @@ class _ReactionButton extends StatefulWidget {
   final IconData activeIcon;
   final String label;
   final Color color;
+  final VoidCallback? onActivate;
 
   const _ReactionButton({
     required this.icon,
     required this.activeIcon,
     required this.label,
     required this.color,
+    this.onActivate,
   });
 
   @override
@@ -709,6 +945,7 @@ class _ReactionButtonState extends State<_ReactionButton>
       _count += _active ? 1 : -1;
     });
     _anim.forward(from: 0);
+    if (_active) widget.onActivate?.call();
   }
 
   @override

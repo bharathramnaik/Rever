@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rever/src/core/config/environment.dart';
 import 'package:rever/src/core/providers/auth_provider.dart';
 import 'package:rever/src/data/models/mastery_model.dart';
 
 /// Fetch mastery records for a profile
 final masteryByProfileProvider =
     FutureProvider.family<List<MasteryModel>, String>((ref, profileId) async {
+  if (AppEnvironment.isDev) return <MasteryModel>[];
   final client = ref.watch(supabaseProvider);
   final data = await client
       .from('mastery')
@@ -18,6 +20,7 @@ final masteryByProfileProvider =
 final conceptMasteryProvider =
     FutureProvider.family<MasteryModel?, ({String profileId, String conceptId})>(
         (ref, params) async {
+  if (AppEnvironment.isDev) return null;
   final client = ref.watch(supabaseProvider);
   final data = await client
       .from('mastery')
@@ -32,6 +35,7 @@ final conceptMasteryProvider =
 /// Fetch concepts due for review
 final dueForReviewProvider =
     FutureProvider.family<List<MasteryModel>, String>((ref, profileId) async {
+  if (AppEnvironment.isDev) return <MasteryModel>[];
   final client = ref.watch(supabaseProvider);
   final now = DateTime.now().toIso8601String();
   final data = await client

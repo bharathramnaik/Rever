@@ -108,6 +108,17 @@ Rever/
 - `flutter build web` — Production web build
 - `flutter build apk --debug` — Android debug APK
 
+## Local Browser Debugging (E2E / CDP)
+For live UI verification via the Chrome DevTools Protocol (Playwright/Puppeteer attach):
+
+1. Serve the app (in a separate shell):
+   - `python -m http.server 3000 --bind 127.0.0.1 --directory build/web`
+2. Launch Chrome with a remote-debugging port pointed at the served app:
+   - `"<Chrome>\chrome.exe" --headless=new --remote-debugging-port=9222 --user-data-dir=%TEMP%\rever-chrome-debug http://127.0.0.1:3000`
+3. Confirm CDP is live: `curl http://127.0.0.1:9222/json/version` (expect `webSocketDebugUrl`).
+- For iterative dev (hot reload), use `flutter run -d chrome` instead; it does **not** expose a CDP port for external tools.
+
+
 ## External APIs Used (No Keys Required)
 - **Open Library**: `https://openlibrary.org/search.json?q=...` and `https://openlibrary.org/works/{id}.json`
 - **Wikipedia**: `https://en.wikipedia.org/api/rest_v1/page/random/summary` and `/page/summary/{title}`

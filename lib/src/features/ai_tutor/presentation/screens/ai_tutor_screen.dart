@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
+import 'package:rever/src/core/services/llm_service.dart';
+import 'package:rever/src/data/models/learning_object_model.dart';
+import 'package:rever/src/data/providers/concept_providers.dart';
 
 /// AI Tutor modes — from Initial flow.txt §23
 enum TutorMode {
@@ -81,48 +85,120 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
       _isThinking = true;
     });
     _textController.clear();
-
     _scrollToBottom();
 
-    // Simulate AI response (placeholder until backend is connected)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() {
-          _messages.add(_ChatMessage(
-            content: _generatePlaceholderResponse(text, mode),
-            isUser: false,
-          ));
-          _isThinking = false;
-        });
-        _scrollToBottom();
+    // Resolve concept RAG context (slug -> concept -> learning objects).
+    final slug = widget.conceptId;
+    if (slug == null || slug.isEmpty) {
+      _replyWithoutContext(userMessage);
+      return;
+    }
+    _replyWithContext(slug, userMessage);
+  }
+
+  Future<void> _replyWithContext(String slug, String userMessage) async {
+    final buf = StringBuffer();
+    try {
+      final concept = await ref.read(conceptBySlugProvider(slug).future);
+      if (concept != null) {
+        buf.writeln('Concept: ${concept.title}');
+        if (concept.summary?.isNotEmpty == true) {
+          buf.writeln('Summary: ${concept.summary}');
+        }
+        final objects = await ref.read(learningObjectsProvider(concept.id).future);
+        for (final obj in objects.take(6)) {
+          final rendered = _objectText(obj);
+          if (rendered.isNotEmpty) buf.writeln(rendered);
+        }
       }
+    } catch (e, st) {
+      debugPrint('[tutor] RAG context fetch failed: $e\n$st');
+    }
+    _getReply(userMessage, context: buf.toString());
+  }
+
+  void _replyWithoutContext(String userMessage) {
+    _getReply(userMessage, context: '');
+  }
+
+  void _getReply(String userMessage, {required String context}) {
+    final llm = ref.read(llmServiceProvider);
+    final system = LlmMessage(
+      role: 'system',
+      content: _systemPrompt(context),
+    );
+    // Tail the history to bound context window.
+    final history = _buildHistoryTail();
+    llm.complete([system, ...history, LlmMessage(role: 'user', content: userMessage)])
+        .then((result) {
+      if (!mounted) return;
+      final reply = switch (result) {
+        LlmOk(:final text) => text,
+        LlmUnavailable(:final reason) =>
+          'The AI tutor backend is not available right now ($reason). '
+          'Try switching topics or checking your API key.',
+      };
+      // Ensure no emojis in the response per house style.
+      final cleanReply = _stripEmojis(reply);
+      setState(() {
+        _messages.add(_ChatMessage(content: cleanReply, isUser: false));
+        _isThinking = false;
+      });
+      _scrollToBottom();
+    }).catchError((Object e, StackTrace st) {
+      debugPrint('[tutor] LLM call failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMessage(
+          content:
+            'Sorry, I hit an error while generating a response. '
+            'Please try again.',
+          isUser: false,
+        ));
+        _isThinking = false;
+      });
+      _scrollToBottom();
     });
   }
 
-  String _generatePlaceholderResponse(String text, TutorMode? mode) {
-    if (mode == TutorMode.quizMe) {
-      return '🧠 Here\'s a quick question:\n\n'
-          'What is the key difference between supervised and unsupervised learning?\n\n'
-          'Think about it, then ask me for the answer!';
+  List<LlmMessage> _buildHistoryTail() {
+    // Keep only the last 8 chat messages to limit token count on free tier.
+    final tail = _messages.length > 8 ? _messages.sublist(_messages.length - 8) : _messages;
+    return tail
+        .where((m) => m.content.trim().isNotEmpty)
+        .map((m) => LlmMessage(role: m.isUser ? 'user' : 'assistant', content: m.content))
+        .toList();
+  }
+
+  /// Extract readable text from a LearningObject's JSON content map.
+  String _objectText(LearningObjectModel obj) {
+    final Map<String, dynamic> content = obj.content;
+    for (final key in ['text', 'body', 'content', 'html', 'description']) {
+      final val = content[key];
+      if (val is String && val.trim().isNotEmpty) return val.trim();
     }
-    if (mode == TutorMode.simplify) {
-      return '📝 Let me simplify that:\n\n'
-          'Think of it like this — imagine you\'re teaching a 10-year-old. '
-          'We\'d say: "It\'s like a recipe book for computers. '
-          'You give it examples, and it figures out the pattern."\n\n'
-          '_(AI backend not connected yet. This is a placeholder response.)_';
+    final buf = StringBuffer();
+    for (final e in content.entries) {
+      if (e.value is String) buf.writeln(e.value);
     }
-    if (mode == TutorMode.example) {
-      return '💡 Real-world example:\n\n'
-          'Netflix recommendations use this concept! When you watch shows, '
-          'the system learns your preferences and suggests similar content.\n\n'
-          '_(AI backend not connected yet. This is a placeholder response.)_';
-    }
-    return '🤖 I understand your question about "${text.isEmpty ? 'this topic' : text}".\n\n'
-        'The AI tutor backend is not connected yet. '
-        'When it\'s ready, I\'ll provide detailed, grounded responses '
-        'with sources from the knowledge base.\n\n'
-        'Try picking a tutor mode above for structured learning!';
+    return buf.toString();
+  }
+
+  String _systemPrompt(String context) {
+    final persona = "You are Rever, a friendly AI tutor. You help users learn "
+        "deeply by explaining clearly and asking guiding questions. "
+        "Answer in plain, confident prose (no bullets unless essential). "
+        "Never use emoji. Do not mention being an AI model or limitations "
+        "unless asked.";
+    final contextSection = context.trim().isEmpty
+        ? 'No extra context is available for this topic.'
+        : 'Use the following source material to ground your answer:\n\n$context';
+    return '$persona\n\n$contextSection';
+  }
+
+  String _stripEmojis(String input) {
+    // Free-tier LLMs sometimes inject unicode emoji; strip to honor house style.
+    return input.replaceAll(RegExp(r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]', unicode: true), '').trim();
   }
 
   void _scrollToBottom() {

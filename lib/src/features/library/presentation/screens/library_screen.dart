@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
+import 'package:rever/src/core/services/recommendation_service.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/preferences_model.dart';
 import 'package:rever/src/data/providers/library_providers.dart';
 import 'package:rever/src/data/providers/preferences_provider.dart';
+import 'package:rever/src/data/providers/scored_feed_provider.dart';
+import 'package:rever/src/data/providers/vector_search_provider.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -198,6 +201,8 @@ class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
                     ),
                     const SizedBox(height: 28),
                   ],
+                  const _ScoredIdeasSection(),
+                  const SizedBox(height: 24),
                   if (articles.isNotEmpty) ...[
                     _SectionHeader(label: 'Discover Articles', theme: theme),
                     const SizedBox(height: 12),
@@ -246,6 +251,7 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final resultsAsync = ref.watch(searchBooksProvider(query));
+    final ideasAsync = ref.watch(vectorSearchProvider(query));
 
     return resultsAsync.when(
       data: (books) {
@@ -264,18 +270,78 @@ class _SearchResults extends ConsumerWidget {
           );
         }
         return SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (_, i) => Padding(
-              padding: EdgeInsets.only(
-                left: 16, right: 16, top: i == 0 ? 0 : 8, bottom: 8,
-              ),
-              child: _BookRow(
-                item: books[i],
-                onTap: () => _openReel(context, books, index: i),
+          delegate: SliverChildListDelegate([
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Ideas matching "$query"',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-            childCount: books.length,
-          ),
+            ...ideasAsync.maybeWhen(
+              data: (hits) => hits.isEmpty
+                  ? const [SizedBox.shrink()]
+                  : hits.take(5).map(
+                      (h) => Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.1),
+                              child: Icon(Icons.lightbulb_outline,
+                                  color: theme.colorScheme.primary),
+                            ),
+                            title: Text(h.card.takeaway,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            subtitle: Text(
+                              h.card.body,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                            trailing: Text(
+                              '${(h.score * 100).round()}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.4),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+              orElse: () => const [SizedBox.shrink()],
+            ),
+            const SizedBox(height: 16),
+            for (var i = 0; i < books.length; i++)
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 16, right: 16, top: i == 0 ? 0 : 8, bottom: 8,
+                ),
+                child: _BookRow(
+                  item: books[i],
+                  onTap: () => _openReel(context, books, index: i),
+                ),
+              ),
+          ]),
         );
       },
       loading: () => const SliverFillRemaining(
@@ -291,6 +357,141 @@ class _SearchResults extends ConsumerWidget {
 void _openReel(BuildContext context, List<ExploreContent> items,
     {int index = 0}) {
   context.push('/content-reel', extra: {'items': items, 'index': index});
+}
+
+/// Ranked "Top ideas for you" (flow.txt §3) — horizontal scored-idea rail.
+class _ScoredIdeasSection extends ConsumerWidget {
+  const _ScoredIdeasSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final async = ref.watch(scoredFeedProvider);
+
+    return async.when(
+      data: (ideas) {
+        if (ideas.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Top ideas for you',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 132,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: ideas.take(6).length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => _IdeaCardTile(
+                  idea: ideas[i],
+                  rank: i + 1,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _IdeaCardTile extends StatelessWidget {
+  final ScoredIdea idea;
+  final int rank;
+  const _IdeaCardTile({required this.idea, required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final card = idea.card;
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 10,
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.12,
+                ),
+                child: Text(
+                  '$rank',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (card.difficulty != null)
+                Text(
+                  card.difficulty!.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              const Spacer(),
+              Text(
+                '${(idea.finalScore * 100).round()}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Text(
+              card.takeaway,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {
