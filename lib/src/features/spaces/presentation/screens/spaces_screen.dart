@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class SpacesScreen extends ConsumerWidget {
   const SpacesScreen({super.key});
@@ -12,7 +13,10 @@ class SpacesScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Learning Spaces'),
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => context.go('/create'),
+          ),
         ],
       ),
       body: Center(

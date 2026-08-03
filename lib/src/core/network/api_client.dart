@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,6 +27,7 @@ final apiClientProvider = Provider<Dio>((ref) {
     },
     onError: (error, handler) {
       if (error.response?.statusCode == 401) {
+        debugPrint('[api_client] 401 — session expired, signing out');
         supabase.auth.signOut();
       }
       handler.next(error);

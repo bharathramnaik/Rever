@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class AppEnvironment {
   AppEnvironment._();
 
@@ -16,8 +18,12 @@ class AppEnvironment {
         defaultValue: '693565124656-vuev5mjnbqu6jqvfq3rnc4g37dttu24g.apps.googleusercontent.com',
       );
 
+  /// Debug mode is opt-in: defaults to `kDebugMode` so that release builds are
+  /// never accidentally treated as dev (which would bypass real auth and use
+  /// demo data). Pass `-d true` in debug to force it on.
   static bool get isDev => const bool.fromEnvironment(
         'DEV_MODE',
-        defaultValue: true,
+        defaultValue: kDebugMode,
       );
 }
+

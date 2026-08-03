@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/preferences_model.dart';
@@ -51,7 +52,9 @@ class ExternalContentService {
         if (title.isEmpty || seen.contains(title)) continue;
         seen.add(title);
         results.add(_articleFromResponse(data));
-      } catch (_) {}
+      } catch (e, st) {
+        debugPrint('[external_content] discoverArticles item failed: $e\n$st');
+      }
     }
     return results;
   }
@@ -129,7 +132,8 @@ class ExternalContentService {
       );
       final data = response.data as Map<String, dynamic>;
       return _articleFromResponse(data);
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[external_content] article detail failed: $e\n$st');
       return item;
     }
   }

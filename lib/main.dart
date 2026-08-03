@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,7 +18,9 @@ Future<void> main() async {
 
   await FirebaseService.initialize();
 
-  if (AppEnvironment.isDev) {
+  // Only auto-sign-in the dev demo account in debug builds. In release the
+  // real auth flow (email/Google sign-in) must be used.
+  if (kDebugMode && AppEnvironment.isDev) {
     await _autoSignIn();
   }
 
@@ -31,17 +34,25 @@ Future<void> main() async {
 }
 
 Future<void> _autoSignIn() async {
+  final client = Supabase.instance.client;
+  if (client.auth.currentSession != null) return;
   try {
-    await Supabase.instance.client.auth.signInWithPassword(
+    await client.auth.signInWithPassword(
       email: 'dev@rever.app',
       password: 'devpassword123',
     );
-  } catch (_) {
+  } on AuthException catch (e, st) {
+    debugPrint('[dev][auth] signIn failed: $e\n$st');
     try {
-      await Supabase.instance.client.auth.signUp(
+      await client.auth.signUp(
         email: 'dev@rever.app',
         password: 'devpassword123',
       );
-    } catch (_) {}
+    } on AuthException catch (e, st) {
+      debugPrint('[dev][auth] signUp also failed: $e\n$st');
+    }
+  } catch (e, st) {
+    debugPrint('[dev][auth] unexpected error: $e\n$st');
   }
 }
+
