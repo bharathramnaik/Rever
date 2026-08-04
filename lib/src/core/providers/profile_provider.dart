@@ -1,19 +1,49 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rever/src/core/config/environment.dart';
 import 'package:rever/src/core/providers/auth_provider.dart';
 import 'package:rever/src/data/models/profile_model.dart';
 
 class ActiveProfileNotifier extends Notifier<String?> {
+  static const _prefsKey = 'active_profile_id';
+
   @override
   String? build() => null;
 
-  void select(String? id) => state = id;
+  void select(String? id) {
+    state = id;
+    if (id == null) return;
+    SharedPreferences.getInstance()
+        .then((prefs) {
+          prefs.setString(_prefsKey, id);
+          return true;
+        })
+        .catchError((Object e) {
+          debugPrint('[profile] persist failed: $e');
+          return false;
+        });
+  }
+
+  /// Restores the last selected profile id (device restart / process death).
+  /// Returns true when a stored id was found.
+  Future<bool> restore() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getString(_prefsKey);
+      if (id != null) {
+        state = id;
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[profile] restore failed: $e');
+    }
+    return false;
+  }
 }
 
 final activeProfileIdProvider =
-    NotifierProvider<ActiveProfileNotifier, String?>(
-  ActiveProfileNotifier.new,
-);
+    NotifierProvider<ActiveProfileNotifier, String?>(ActiveProfileNotifier.new);
 
 final activeProfileProvider = FutureProvider<ProfileModel?>((ref) async {
   final profileId = ref.watch(activeProfileIdProvider);

@@ -6,6 +6,7 @@ import 'package:rever/src/data/models/explore_content_model.dart';
 import 'package:rever/src/data/models/preferences_model.dart';
 import 'package:rever/src/data/providers/preferences_provider.dart';
 import 'package:rever/src/data/providers/quote_provider.dart';
+import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -16,18 +17,18 @@ class HomeScreen extends ConsumerWidget {
     return const Scaffold(
       body: SafeArea(
         child: CustomScrollView(
-        slivers: [
-          _GreetingHeader(),
-          SliverToBoxAdapter(child: SizedBox(height: 4)),
-          _QuoteCard(),
-          SliverToBoxAdapter(child: SizedBox(height: 28)),
-          _ForYouSection(),
-          SliverToBoxAdapter(child: SizedBox(height: 28)),
-          _QuickActions(),
-          SliverToBoxAdapter(child: SizedBox(height: 28)),
-          _DailySection(),
-          SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+          slivers: [
+            _GreetingHeader(),
+            SliverToBoxAdapter(child: SizedBox(height: 4)),
+            _QuoteCard(),
+            SliverToBoxAdapter(child: SizedBox(height: 28)),
+            _ForYouSection(),
+            SliverToBoxAdapter(child: SizedBox(height: 28)),
+            _QuickActions(),
+            SliverToBoxAdapter(child: SizedBox(height: 28)),
+            _DailySection(),
+            SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ],
         ),
       ),
     );
@@ -44,10 +45,21 @@ class _GreetingHeader extends ConsumerWidget {
     final greeting = hour < 12
         ? 'Good morning'
         : hour < 18
-            ? 'Good afternoon'
-            : 'Good evening';
+        ? 'Good afternoon'
+        : 'Good evening';
 
     final profileAsync = ref.watch(activeProfileProvider);
+    final profileId = ref.watch(activeProfileIdProvider);
+    final streakAsync = profileId == null
+        ? null
+        : ref.watch(streakProvider(profileId));
+    final streakText =
+        streakAsync?.when(
+          data: (s) => s?.currentStreak.toString() ?? '0',
+          loading: () => '0',
+          error: (_, __) => '0',
+        ) ??
+        '0';
     final name = profileAsync.when(
       data: (p) => p?.name ?? 'Learner',
       loading: () => 'Learner',
@@ -90,11 +102,14 @@ class _GreetingHeader extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_fire_department,
-                      size: 16, color: Colors.orange.shade700),
+                  Icon(
+                    Icons.local_fire_department,
+                    size: 16,
+                    color: Colors.orange.shade700,
+                  ),
                   const SizedBox(width: 4),
                   Text(
-                    '3',
+                    streakText,
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: Colors.orange.shade700,
                       fontWeight: FontWeight.w700,
@@ -178,12 +193,16 @@ class _QuoteCardState extends ConsumerState<_QuoteCard> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary
-                                .withValues(alpha: 0.12),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(Icons.format_quote,
-                              color: theme.colorScheme.primary, size: 20),
+                          child: Icon(
+                            Icons.format_quote,
+                            color: theme.colorScheme.primary,
+                            size: 20,
+                          ),
                         ),
                         const Spacer(),
                         if (!_expanded)
@@ -192,24 +211,30 @@ class _QuoteCardState extends ConsumerState<_QuoteCard> {
                             duration: const Duration(milliseconds: 200),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.1),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.touch_app,
-                                      size: 14,
-                                      color: theme.colorScheme.primary),
+                                  Icon(
+                                    Icons.touch_app,
+                                    size: 14,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text('Hold to read',
-                                      style: theme.textTheme.labelSmall
-                                          ?.copyWith(
-                                              color: theme
-                                                  .colorScheme.primary)),
+                                  Text(
+                                    'Hold to read',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -254,8 +279,7 @@ class _QuoteCardState extends ConsumerState<_QuoteCard> {
                               children: [
                                 Text(
                                   quote.author,
-                                  style:
-                                      theme.textTheme.titleMedium?.copyWith(
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -280,18 +304,24 @@ class _QuoteCardState extends ConsumerState<_QuoteCard> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Icon(Icons.refresh,
-                              size: 14,
-                              color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.refresh,
+                            size: 14,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 6),
-                          Text('Tap to refresh quote',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                              )),
+                          Text(
+                            'Tap to refresh quote',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
                           const Spacer(),
-                          Icon(Icons.bookmark_outline,
-                              size: 18,
-                              color: theme.colorScheme.onSurfaceVariant),
+                          Icon(
+                            Icons.bookmark_outline,
+                            size: 18,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ],
                       ),
                     ],
@@ -333,13 +363,13 @@ class _ForYouSection extends ConsumerWidget {
     final items = ref.watch(trendingContentProvider).asData?.value;
 
     final topics = prefs?.topics ?? const [];
-    if (topics.isEmpty || items == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (topics.isEmpty || items == null)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
-    final books =
-        items.where((i) => i.source == ContentSource.book).toList();
-    final matched =
-        books.where((b) => matchesPreferences(b, topics)).toList();
-    if (matched.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    final books = items.where((i) => i.source == ContentSource.book).toList();
+    final matched = books.where((b) => matchesPreferences(b, topics)).toList();
+    if (matched.isEmpty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     return SliverToBoxAdapter(
       child: Column(
@@ -362,10 +392,12 @@ class _ForYouSection extends ConsumerWidget {
                 const Spacer(),
                 GestureDetector(
                   onTap: () => context.go('/library'),
-                  child: Text('See all',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                      )),
+                  child: Text(
+                    'See all',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -380,10 +412,10 @@ class _ForYouSection extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => _ForYouBookCard(
                 item: matched[i],
-                onTap: () => context.push('/content-reel', extra: {
-                  'items': matched,
-                  'index': i,
-                }),
+                onTap: () => context.push(
+                  '/content-reel',
+                  extra: {'items': matched, 'index': i},
+                ),
               ),
             ),
           ),
@@ -421,23 +453,31 @@ class _ForYouBookCard extends StatelessWidget {
                           errorBuilder: (_, __, ___) => Container(
                             width: 62,
                             height: 84,
-                            color: theme.colorScheme.primary
-                                .withValues(alpha: 0.06),
-                            child: Icon(Icons.menu_book,
-                                size: 24,
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.3)),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.06,
+                            ),
+                            child: Icon(
+                              Icons.menu_book,
+                              size: 24,
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
                           ),
                         )
                       : Container(
                           width: 62,
                           height: 84,
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.06),
-                          child: Icon(Icons.menu_book,
-                              size: 24,
-                              color:
-                                  theme.colorScheme.primary.withValues(alpha: 0.3)),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.06,
+                          ),
+                          child: Icon(
+                            Icons.menu_book,
+                            size: 24,
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -469,10 +509,13 @@ class _ForYouBookCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.1),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -520,12 +563,6 @@ class _QuickActions extends StatelessWidget {
         label: 'Review',
         color: Colors.amber.shade600,
         onTap: () => context.go('/review'),
-      ),
-      _ActionItem(
-        icon: Icons.auto_awesome,
-        label: 'AI Tutor',
-        color: const Color(0xFFE040FB),
-        onTap: () => context.go('/ai-tutor'),
       ),
     ];
 
@@ -604,16 +641,14 @@ class _DailySection extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 12),
-              child: Text(
-                'Today',
-                style: theme.textTheme.headlineSmall,
-              ),
+              child: Text('Today', style: theme.textTheme.headlineSmall),
             ),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.4),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.4,
+                ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: theme.colorScheme.outline.withValues(alpha: 0.5),
@@ -633,8 +668,8 @@ class _DailySection extends ConsumerWidget {
                           child: CircularProgressIndicator(
                             value: 0.4,
                             strokeWidth: 4,
-                            backgroundColor:
-                                theme.colorScheme.primary.withValues(alpha: 0.1),
+                            backgroundColor: theme.colorScheme.primary
+                                .withValues(alpha: 0.1),
                           ),
                         ),
                         Text(
@@ -671,59 +706,6 @@ class _DailySection extends ConsumerWidget {
                     onPressed: () => context.go('/library'),
                     child: const Text('Read'),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    theme.colorScheme.primary.withValues(alpha: 0.12),
-                    theme.colorScheme.primary.withValues(alpha: 0.04),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(Icons.auto_awesome,
-                        color: theme.colorScheme.primary, size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ask the AI Tutor',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Learn any concept in depth',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right,
-                      color: theme.colorScheme.onSurfaceVariant),
                 ],
               ),
             ),

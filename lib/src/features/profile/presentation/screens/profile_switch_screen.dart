@@ -4,13 +4,55 @@ import 'package:go_router/go_router.dart';
 import 'package:rever/src/core/providers/profile_provider.dart';
 import 'package:rever/src/data/models/profile_model.dart';
 
-class ProfileSwitchScreen extends ConsumerWidget {
+class ProfileSwitchScreen extends ConsumerStatefulWidget {
   const ProfileSwitchScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileSwitchScreen> createState() =>
+      _ProfileSwitchScreenState();
+}
+
+class _ProfileSwitchScreenState extends ConsumerState<ProfileSwitchScreen> {
+  /// Fires once per app process: on Android home reload the process is fresh,
+  /// so a stored profile sends the user straight to home instead of dumping
+  /// them back on this screen. Deliberate visits in the same process never
+  /// auto-redirect.
+  static bool _bootRedirected = false;
+  bool _shouldBootRedirect = false;
+  bool _redirected = false;
+  bool _userInteracted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore the last selected profile so app restarts (process death,
+    // backgrounding, back button) return the user straight to home.
+    ref.read(activeProfileIdProvider.notifier).restore().then((found) {
+      if (found && !_bootRedirected && mounted) {
+        _shouldBootRedirect = true;
+      }
+    });
+  }
+
+  void _maybeRedirect(List<ProfileModel> profiles, String? activeId) {
+    if (!_shouldBootRedirect || _redirected || _userInteracted) return;
+    if (activeId == null) return;
+    if (profiles.any((p) => p.id == activeId)) {
+      _redirected = true;
+      _bootRedirected = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/home');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final profilesAsync = ref.watch(profilesProvider);
+    final activeId = ref.watch(activeProfileIdProvider);
+    final profiles = profilesAsync.asData?.value;
+    if (profiles != null) _maybeRedirect(profiles, activeId);
 
     return PopScope(
       canPop: false,
@@ -24,10 +66,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Who\'s learning?',
-                  style: theme.textTheme.displayLarge,
-                ),
+                Text('Who\'s learning?', style: theme.textTheme.displayLarge),
                 const SizedBox(height: 8),
                 Text(
                   'Select a profile to continue',
@@ -43,18 +82,21 @@ class ProfileSwitchScreen extends ConsumerWidget {
                     }
                     return Column(
                       children: [
-                        ...profiles.map((profile) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                                child: _ProfileCard(
-                                  profile: profile,
-                                  onTap: () {
-                                    ref
-                                        .read(activeProfileIdProvider.notifier)
-                                        .select(profile.id);
-                                    context.go('/preferences');
-                                  },
-                                ),
-                            )),
+                        ...profiles.map(
+                          (profile) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _ProfileCard(
+                              profile: profile,
+                              onTap: () {
+                                _userInteracted = true;
+                                ref
+                                    .read(activeProfileIdProvider.notifier)
+                                    .select(profile.id);
+                                context.go('/preferences');
+                              },
+                            ),
+                          ),
+                        ),
                         OutlinedButton.icon(
                           onPressed: () => _showAddProfileDialog(context, ref),
                           icon: const Icon(Icons.add),
@@ -78,6 +120,7 @@ class ProfileSwitchScreen extends ConsumerWidget {
                   error: (e, _) => _FallbackProfiles(
                     ref: ref,
                     onSelect: (id) {
+                      _userInteracted = true;
                       ref.read(activeProfileIdProvider.notifier).select(id);
                       context.go('/preferences');
                     },
@@ -161,23 +204,40 @@ class _FallbackProfiles extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final demoProfiles = [
-      (name: 'Bharath', type: 'Adult', icon: Icons.face, color: const Color(0xFF6C63FF)),
-      (name: 'Arjun', type: 'Child (Age 8)', icon: Icons.child_care, color: const Color(0xFF00D9A6)),
-      (name: 'Nikhil', type: 'Teen (Age 15)', icon: Icons.school, color: const Color(0xFFFF6B6B)),
+      (
+        name: 'Bharath',
+        type: 'Adult',
+        icon: Icons.face,
+        color: const Color(0xFF6C63FF),
+      ),
+      (
+        name: 'Arjun',
+        type: 'Child (Age 8)',
+        icon: Icons.child_care,
+        color: const Color(0xFF00D9A6),
+      ),
+      (
+        name: 'Nikhil',
+        type: 'Teen (Age 15)',
+        icon: Icons.school,
+        color: const Color(0xFFFF6B6B),
+      ),
     ];
 
     return Column(
       children: demoProfiles
-          .map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _DemoProfileCard(
-                  name: p.name,
-                  type: p.type,
-                  icon: p.icon,
-                  color: p.color,
-                  onTap: () => onSelect(p.name),
-                ),
-              ))
+          .map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _DemoProfileCard(
+                name: p.name,
+                type: p.type,
+                icon: p.icon,
+                color: p.color,
+                onTap: () => onSelect(p.name),
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -192,15 +252,20 @@ class _EmptyProfiles extends StatelessWidget {
     return Center(
       child: Column(
         children: [
-          Icon(Icons.person_add, size: 64,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+          Icon(
+            Icons.person_add,
+            size: 64,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
           Text('No profiles yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Text('Create a profile to start learning',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              )),
+          Text(
+            'Create a profile to start learning',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
         ],
       ),
     );
@@ -227,8 +292,12 @@ class _ProfileCard extends StatelessWidget {
           backgroundColor: color.withValues(alpha: 0.1),
           child: profile.avatarUrl != null
               ? ClipOval(
-                  child: Image.network(profile.avatarUrl!,
-                      width: 56, height: 56, fit: BoxFit.cover),
+                  child: Image.network(
+                    profile.avatarUrl!,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
                 )
               : Icon(icon, color: color, size: 28),
         ),

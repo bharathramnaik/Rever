@@ -135,15 +135,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Sources', style: theme.textTheme.headlineMedium),
+                      Text('Books', style: theme.textTheme.headlineMedium),
                       TextButton(
                         onPressed: () => context.go('/sources'),
                         child: const Text('See all'),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Text(
+                      'Up to 10 books shown. Access is limited to 3 books '
+                      'per profile.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  const _SourcesPreview(),
+                  const _BooksPreview(),
                 ],
               ],
             ),
@@ -268,8 +279,12 @@ class _SearchResultsView extends ConsumerWidget {
   }
 }
 
-class _SourcesPreview extends ConsumerWidget {
-  const _SourcesPreview();
+/// Top 10 books (sources) by preference-fit; tap through to the book detail
+/// where access can be requested (capped at 3 per profile).
+class _BooksPreview extends ConsumerWidget {
+  const _BooksPreview();
+
+  static const _maxBooks = 10;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -278,41 +293,57 @@ class _SourcesPreview extends ConsumerWidget {
 
     return sourcesAsync.when(
       data: (sources) {
-        if (sources.isEmpty) return const SizedBox.shrink();
+        final books = sources.take(_maxBooks).toList();
+        if (books.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(8),
+            child: Text(
+              'Books will appear here once published and approved.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          );
+        }
         return SizedBox(
-          height: 100,
+          height: 110,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: sources.length,
+            itemCount: books.length,
             itemBuilder: (context, index) {
-              final s = sources[index];
-              return Container(
-                width: 140,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.colorScheme.outline),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.menu_book, color: theme.colorScheme.primary),
-                    const Spacer(),
-                    Text(s.title,
+              final s = books[index];
+              return GestureDetector(
+                onTap: () => context.go('/source/${s.id}'),
+                child: Container(
+                  width: 140,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: theme.colorScheme.outline),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.menu_book, color: theme.colorScheme.primary),
+                      const Spacer(),
+                      Text(
+                        s.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall),
-                  ],
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           ),
         );
       },
-      loading: () => const SizedBox(height: 100),
-      error: (_, __) => const SizedBox(height: 100),
+      loading: () => const SizedBox(height: 110),
+      error: (_, __) => const SizedBox(height: 110),
     );
   }
 }

@@ -32,7 +32,8 @@ jobs:
           flutter build apk --debug \
             --dart-define=LLM_API_KEY_NVIDIA_NEMOTRON=${{ secrets.LLM_API_KEY_NVIDIA_NEMOTRON }} \
             --dart-define=LLM_API_KEY_NVIDIA_INKLING=${{ secrets.LLM_API_KEY_NVIDIA_INKLING }} \
-            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }}
+            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }} \
+            --dart-define=LLM_API_KEY_TOKEN_ROUTER=${{ secrets.LLM_API_KEY_TOKEN_ROUTER }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -55,7 +56,8 @@ jobs:
           flutter build web --base-href=/Rever/ \
             --dart-define=LLM_API_KEY_NVIDIA_NEMOTRON=${{ secrets.LLM_API_KEY_NVIDIA_NEMOTRON }} \
             --dart-define=LLM_API_KEY_NVIDIA_INKLING=${{ secrets.LLM_API_KEY_NVIDIA_INKLING }} \
-            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }}
+            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }} \
+            --dart-define=LLM_API_KEY_TOKEN_ROUTER=${{ secrets.LLM_API_KEY_TOKEN_ROUTER }}
 
       - uses: actions/upload-artifact@v4
         with:

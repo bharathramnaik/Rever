@@ -35,7 +35,6 @@ void main() {
       expect(find.text('Learn'), findsOneWidget);
       expect(find.text('Discover'), findsOneWidget);
       expect(find.text('Review'), findsOneWidget);
-      expect(find.text('AI Tutor'), findsOneWidget);
     });
   });
 }

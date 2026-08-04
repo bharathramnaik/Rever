@@ -4,9 +4,11 @@ import 'package:dio/dio.dart';
 
 /// NVIDIA NIM embedding client (OpenAI-compatible `/v1/embeddings`).
 ///
-/// Key comes from `LLM_API_KEY_NVIDIA` via --dart-define (same NIM key as the
-/// chat chain; model overridable with `LLM_EMBED_MODEL`). No key -> null
-/// client, and callers degrade to keyword search (flow.txt §4 fallback).
+/// Key comes from the chat chain's dart-defines (first available of
+/// `LLM_API_KEY_NVIDIA_3` / `LLM_API_KEY_NVIDIA_INKLING` /
+/// `LLM_API_KEY_NVIDIA_NEMOTRON`; model overridable with `LLM_EMBED_MODEL`).
+/// No key -> null client, and callers degrade to keyword search
+/// (flow.txt §4 fallback).
 class EmbeddingClient {
   final Dio _dio;
   final String apiKey;
@@ -24,8 +26,13 @@ class EmbeddingClient {
 
   /// Builds a client from dart-define, or null when no NIM key is configured.
   static EmbeddingClient? fromEnvironment() {
-    const key = String.fromEnvironment('LLM_API_KEY_NVIDIA', defaultValue: '');
-    if (key.isEmpty) return null;
+    const candidates = [
+      String.fromEnvironment('LLM_API_KEY_NVIDIA_3', defaultValue: ''),
+      String.fromEnvironment('LLM_API_KEY_NVIDIA_INKLING', defaultValue: ''),
+      String.fromEnvironment('LLM_API_KEY_NVIDIA_NEMOTRON', defaultValue: ''),
+    ];
+    final key = candidates.where((k) => k.isNotEmpty).firstOrNull;
+    if (key == null) return null;
     const model = String.fromEnvironment(
       'LLM_EMBED_MODEL',
       defaultValue: defaultModel,
@@ -48,9 +55,14 @@ class EmbeddingClient {
     );
     if (resp.statusCode != 200) return null;
     final data = resp.data as Map<String, dynamic>?;
-    final first = (data?['data'] as List?)?.cast<Map<String, dynamic>>().firstOrNull;
+    final first = (data?['data'] as List?)
+        ?.cast<Map<String, dynamic>>()
+        .firstOrNull;
     if (first == null) return null;
-    return (first['embedding'] as List?)?.cast<num>().map((v) => v.toDouble()).toList();
+    return (first['embedding'] as List?)
+        ?.cast<num>()
+        .map((v) => v.toDouble())
+        .toList();
   }
 
   /// Cosine similarity, 1.0 = identical direction, 0 = orthogonal.

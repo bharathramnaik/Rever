@@ -36,7 +36,9 @@ Dio _fakeDio(Map<String, _Resp> byModel) {
     return ResponseBody.fromString(
       json.encode(resp.body),
       resp.status,
-      headers: {'content-type': ['application/json']},
+      headers: {
+        'content-type': ['application/json'],
+      },
     );
   });
   return dio;
@@ -52,34 +54,50 @@ void main() {
     expect(res, isA<LlmUnavailable>());
   });
 
-  test('single provider 200 -> LlmOk parses text + token usage', () async {
-    final dio = _fakeDio({
-      _kimi: _Resp(200, {
-        'choices': [
-          {'message': {'content': 'hi there'}}
-        ],
-        'usage': {'prompt_tokens': 3, 'completion_tokens': 2},
-      }),
-    });
-    final cfg = LlmConfig(
-      provider: 'nvidia',
-      baseUrl: 'https://integrate.api.nvidia.com/v1',
-      model: _kimi,
-      apiKey: 'fake',
-    );
-    final svc = LlmService([cfg], dio);
-    final res = await svc.complete([LlmMessage(role: 'user', content: 'hi')]);
-    expect(res, isA<LlmOk>());
-    if (res case LlmOk(text: final t, inputTokens: final it, outputTokens: final ot)) {
-      expect(t, 'hi there');
-      expect(it, 3);
-      expect(ot, 2);
-    }
-  });
+  test(
+    'single provider 200 -> LlmOk parses text + token usage + reasoning',
+    () async {
+      final dio = _fakeDio({
+        _kimi: _Resp(200, {
+          'choices': [
+            {
+              'message': {
+                'content': 'hi there',
+                'reasoning': 'thinking step 1',
+              },
+            },
+          ],
+          'usage': {'prompt_tokens': 3, 'completion_tokens': 2},
+        }),
+      });
+      final cfg = LlmConfig(
+        provider: 'nvidia',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        model: _kimi,
+        apiKey: 'fake',
+      );
+      final svc = LlmService([cfg], dio);
+      final res = await svc.complete([LlmMessage(role: 'user', content: 'hi')]);
+      expect(res, isA<LlmOk>());
+      if (res case LlmOk(
+        text: final t,
+        inputTokens: final it,
+        outputTokens: final ot,
+        reasoning: final r,
+      )) {
+        expect(t, 'hi there');
+        expect(it, 3);
+        expect(ot, 2);
+        expect(r, 'thinking step 1');
+      }
+    },
+  );
 
   test('401 on provider -> LlmUnavailable (no retry loop)', () async {
     final dio = _fakeDio({
-      _kimi: _Resp(401, {'error': {'message': 'unauthorized'}}),
+      _kimi: _Resp(401, {
+        'error': {'message': 'unauthorized'},
+      }),
     });
     final cfg = LlmConfig(
       provider: 'nvidia',
@@ -96,10 +114,14 @@ void main() {
 
   test('fallback chain: kimi (401) -> nemotron (200)', () async {
     final dio = _fakeDio({
-      _kimi: _Resp(401, {'error': {'message': 'bad key'}}),
+      _kimi: _Resp(401, {
+        'error': {'message': 'bad key'},
+      }),
       _nemotron: _Resp(200, {
         'choices': [
-          {'message': {'content': 'from nemotron'}}
+          {
+            'message': {'content': 'from nemotron'},
+          },
         ],
       }),
     });
@@ -127,7 +149,9 @@ void main() {
 
   test('all providers fail -> LlmUnavailable aggregated', () async {
     final dio = _fakeDio({
-      _kimi: _Resp(402, {'error': {'message': 'billing'}}),
+      _kimi: _Resp(402, {
+        'error': {'message': 'billing'},
+      }),
       _nemotron: _Resp(200, {'choices': []}), // empty -> unavailable, try next
     });
     final chain = [
@@ -167,11 +191,15 @@ void main() {
       return ResponseBody.fromString(
         json.encode({
           'choices': [
-            {'message': {'content': 'ok'}}
+            {
+              'message': {'content': 'ok'},
+            },
           ],
         }),
         200,
-        headers: {'content-type': ['application/json']},
+        headers: {
+          'content-type': ['application/json'],
+        },
       );
     });
 

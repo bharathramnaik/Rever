@@ -156,3 +156,48 @@ BEGIN
     ORDER BY ic.embedding <=> query_embedding
     LIMIT match_count;
 END $$;
+
+
+-- 012: User-published content (Sprint 7): publish own articles/blogs,
+-- owner approves (via dashboard, service role bypasses RLS); approved
+-- posts are visible to every profile.
+CREATE TABLE IF NOT EXISTS submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT ''pending''
+        CHECK (status IN (''pending'', ''approved'', ''rejected'')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    approved_at TIMESTAMPTZ
+);
+
+ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "submissions_read" ON submissions;
+CREATE POLICY "submissions_read" ON submissions FOR SELECT
+    USING (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid())
+           OR status = ''approved'');
+DROP POLICY IF EXISTS "submissions_insert" ON submissions;
+CREATE POLICY "submissions_insert" ON submissions FOR INSERT
+    WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid()));
+DROP POLICY IF EXISTS "submissions_update_own" ON submissions;
+CREATE POLICY "submissions_update_own" ON submissions FOR UPDATE
+    USING (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid()));
+
+-- 013: Book access cap (Sprint 7): profiles request access to books
+-- (sources); the owner grants via dashboard. Enforced at 3 per profile.
+CREATE TABLE IF NOT EXISTS book_access (
+    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT ''requested''
+        CHECK (status IN (''requested'', ''granted'', ''denied'')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (profile_id, source_id)
+);
+
+ALTER TABLE book_access ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "book_access_read" ON book_access;
+CREATE POLICY "book_access_read" ON book_access FOR SELECT USING (true);
+DROP POLICY IF EXISTS "book_access_insert" ON book_access;
+CREATE POLICY "book_access_insert" ON book_access FOR INSERT
+    WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid()));

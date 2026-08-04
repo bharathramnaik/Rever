@@ -11,6 +11,7 @@ import 'package:rever/src/data/models/stash_card_model.dart';
 import 'package:rever/src/data/providers/idea_card_providers.dart';
 import 'package:rever/src/data/services/external_content_service.dart';
 import 'package:rever/src/data/providers/signal_providers.dart';
+import 'package:rever/src/data/providers/streak_providers.dart';
 import 'package:rever/src/features/library/presentation/widgets/related_ideas_section.dart';
 import 'package:rever/src/data/providers/idea_relationship_providers.dart';
 
@@ -153,9 +154,7 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
                   widget.onComplete();
                 } else {
                   if (i > _current) {
-                    _recordSignal('skipped', payload: {
-                      'from_index': _current,
-                    });
+                    _recordSignal('skipped', payload: {'from_index': _current});
                   }
                   setState(() => _current = i);
                 }
@@ -183,10 +182,7 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
           top: MediaQuery.of(context).padding.top + 8,
           left: 0,
           right: 0,
-          child: _ProgressBar(
-            total: _stashes.length,
-            current: _current,
-          ),
+          child: _ProgressBar(total: _stashes.length, current: _current),
         ),
         Positioned(
           top: MediaQuery.of(context).padding.top + 8,
@@ -204,8 +200,10 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -213,31 +211,35 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.local_fire_department,
-                          size: 14,
-                          color: Colors.orangeAccent.withValues(alpha: 0.9)),
+                      Icon(
+                        Icons.local_fire_department,
+                        size: 14,
+                        color: Colors.orangeAccent.withValues(alpha: 0.9),
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '3 day streak',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 11),
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 6),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${widget.itemIndex + 1} of ${widget.totalItems}',
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ),
               ],
@@ -248,10 +250,16 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
   }
 
   void _recordSignal(String type, {Map<String, dynamic>? payload}) {
-    ref.read(signalRecorderProvider).record(
-          type,
-          payload: {'source_id': widget.item.id, ...?payload},
-        );
+    ref
+        .read(signalRecorderProvider)
+        .record(type, payload: {'source_id': widget.item.id, ...?payload});
+    if (type == 'finished') {
+      // Finishing an item counts as a learning day for the streak.
+      final profileId = ref.read(activeProfileIdProvider);
+      if (profileId != null) {
+        ref.read(streakRepositoryProvider).logActivity(profileId);
+      }
+    }
   }
 
   Widget _buildEmptyFallback() {
@@ -261,23 +269,25 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.auto_stories,
-                size: 48,
-                color: _colorFor(widget.item.source).withValues(alpha: 0.5)),
+            Icon(
+              Icons.auto_stories,
+              size: 48,
+              color: _colorFor(widget.item.source).withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             Text(
               widget.item.title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: Colors.white),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               'Loading insights...',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white54,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: Colors.white54),
             ),
           ],
         ),
@@ -304,23 +314,25 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_outline,
-                  size: 64,
-                  color: _colorFor(widget.item.source).withValues(alpha: 0.7)),
+              Icon(
+                Icons.check_circle_outline,
+                size: 64,
+                color: _colorFor(widget.item.source).withValues(alpha: 0.7),
+              ),
               const SizedBox(height: 24),
               Text(
                 'Well done!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'You\'ve finished this item',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
               ),
               const SizedBox(height: 24),
               if (!isLast) ...[
@@ -337,19 +349,24 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        _colorFor(widget.item.source).withValues(alpha: 0.3),
+                    backgroundColor: _colorFor(
+                      widget.item.source,
+                    ).withValues(alpha: 0.3),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 14),
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
               ],
               TextButton(
                 onPressed: widget.onClose,
-                child: const Text('Back to Library',
-                    style: TextStyle(color: Colors.white54)),
+                child: const Text(
+                  'Back to Library',
+                  style: TextStyle(color: Colors.white54),
+                ),
               ),
             ],
           ),
@@ -357,6 +374,7 @@ class _StashPageViewState extends ConsumerState<_StashPageView> {
       ),
     );
   }
+
   Color _colorFor(ContentSource source) {
     return source == ContentSource.book ? Colors.amber : Colors.cyan;
   }
@@ -396,9 +414,10 @@ class _StashButtonState extends ConsumerState<_StashButton>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _scale = Tween<double>(begin: 1, end: 1.4).animate(
-      CurvedAnimation(parent: _anim, curve: Curves.elasticOut),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: 1.4,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
   }
 
   @override
@@ -435,9 +454,9 @@ class _StashButtonState extends ConsumerState<_StashButton>
     }
 
     try {
-      await ref
-          .read(ideaCardRepositoryProvider)
-          .saveGenerated(profileId, [card]);
+      await ref.read(ideaCardRepositoryProvider).saveGenerated(profileId, [
+        card,
+      ]);
       _didSave();
     } catch (e, st) {
       debugPrint('[reel] stash save failed, using device cache: $e\n$st');
@@ -451,9 +470,9 @@ class _StashButtonState extends ConsumerState<_StashButton>
     _anim.forward(from: 0);
     setState(() => _saved = true);
     _snack('Saved to Stash');
-    ref.read(signalRecorderProvider).record('saved', payload: {
-      'source_id': widget.item.id,
-    });
+    ref
+        .read(signalRecorderProvider)
+        .record('saved', payload: {'source_id': widget.item.id});
     ref.invalidate(localIdeaCardsProvider);
   }
 
@@ -467,7 +486,8 @@ class _StashButtonState extends ConsumerState<_StashButton>
       onTap: _saved ? null : _save,
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        builder: (_, child) =>
+            Transform.scale(scale: _scale.value, child: child),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -483,7 +503,9 @@ class _StashButtonState extends ConsumerState<_StashButton>
               ),
               child: Icon(
                 _saved ? widget.activeIcon : widget.icon,
-                color: _saved ? widget.color : Colors.white.withValues(alpha: 0.7),
+                color: _saved
+                    ? widget.color
+                    : Colors.white.withValues(alpha: 0.7),
                 size: 22,
               ),
             ),
@@ -565,22 +587,20 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _openedRecorded) return;
       _openedRecorded = true;
-      ref.read(signalRecorderProvider).record(
+      ref
+          .read(signalRecorderProvider)
+          .record(
             'opened',
-            payload: {
-              'source_id': widget.item.id,
-              'slide_index': widget.index,
-            },
+            payload: {'source_id': widget.item.id, 'slide_index': widget.index},
           );
     });
     _dwellTimer = Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
-      ref.read(signalRecorderProvider).record(
+      ref
+          .read(signalRecorderProvider)
+          .record(
             'dwelled',
-            payload: {
-              'source_id': widget.item.id,
-              'slide_index': widget.index,
-            },
+            payload: {'source_id': widget.item.id, 'slide_index': widget.index},
           );
     });
   }
@@ -592,10 +612,9 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
   }
 
   void _recordSignal(String type, {Map<String, dynamic>? payload}) {
-    ref.read(signalRecorderProvider).record(
-          type,
-          payload: {'source_id': widget.item.id, ...?payload},
-        );
+    ref
+        .read(signalRecorderProvider)
+        .record(type, payload: {'source_id': widget.item.id, ...?payload});
   }
 
   @override
@@ -613,10 +632,7 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.22),
-            Colors.black,
-          ],
+          colors: [color.withValues(alpha: 0.22), Colors.black],
         ),
       ),
       child: SafeArea(
@@ -696,8 +712,7 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
                                 Text(
                                   item.title,
                                   style: textTheme.titleSmall?.copyWith(
-                                    color:
-                                        Colors.white.withValues(alpha: 0.75),
+                                    color: Colors.white.withValues(alpha: 0.75),
                                     height: 1.3,
                                   ),
                                 ),
@@ -738,10 +753,7 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0),
-                      Colors.black,
-                    ],
+                    colors: [Colors.black.withValues(alpha: 0), Colors.black],
                   ),
                 ),
                 child: Column(
@@ -754,24 +766,21 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
                           activeIcon: Icons.favorite,
                           label: 'Like',
                           color: Colors.redAccent,
-                          onActivate: () =>
-                              _recordSignal('liked'),
+                          onActivate: () => _recordSignal('liked'),
                         ),
                         _ReactionButton(
                           icon: Icons.whatshot_outlined,
                           activeIcon: Icons.whatshot,
                           label: 'Mind Blown',
                           color: Colors.orangeAccent,
-                          onActivate: () =>
-                              _recordSignal('mind_blown'),
+                          onActivate: () => _recordSignal('mind_blown'),
                         ),
                         _ReactionButton(
                           icon: Icons.lightbulb_outline,
                           activeIcon: Icons.lightbulb,
                           label: 'Useful',
                           color: Colors.amberAccent,
-                          onActivate: () =>
-                              _recordSignal('actionable'),
+                          onActivate: () => _recordSignal('actionable'),
                         ),
                         _StashButton(
                           icon: Icons.bookmark_outline,
@@ -784,9 +793,11 @@ class _StashSlideState extends ConsumerState<_StashSlide> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Icon(Icons.swipe_vertical,
-                        size: 20,
-                        color: Colors.white.withValues(alpha: 0.2)),
+                    Icon(
+                      Icons.swipe_vertical,
+                      size: 20,
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
                   ],
                 ),
               ),
@@ -844,9 +855,10 @@ class _ActionButtonState extends State<_ActionButton>
       vsync: this,
       duration: const Duration(milliseconds: 200),
     );
-    _scale = Tween<double>(begin: 1, end: 1.3).animate(
-      CurvedAnimation(parent: _anim, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: 1.3,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOutBack));
   }
 
   @override
@@ -865,10 +877,8 @@ class _ActionButtonState extends State<_ActionButton>
       onTap: _onTap,
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) => Transform.scale(
-          scale: _scale.value,
-          child: child,
-        ),
+        builder: (_, child) =>
+            Transform.scale(scale: _scale.value, child: child),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -879,15 +889,20 @@ class _ActionButtonState extends State<_ActionButton>
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(22),
               ),
-              child: Icon(widget.icon,
-                  color: Colors.white.withValues(alpha: 0.7), size: 22),
+              child: Icon(
+                widget.icon,
+                color: Colors.white.withValues(alpha: 0.7),
+                size: 22,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(widget.label,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 11,
-                )),
+            Text(
+              widget.label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
+            ),
           ],
         ),
       ),
@@ -928,9 +943,10 @@ class _ReactionButtonState extends State<_ReactionButton>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _scale = Tween<double>(begin: 1, end: 1.4).animate(
-      CurvedAnimation(parent: _anim, curve: Curves.elasticOut),
-    );
+    _scale = Tween<double>(
+      begin: 1,
+      end: 1.4,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
   }
 
   @override
@@ -954,10 +970,8 @@ class _ReactionButtonState extends State<_ReactionButton>
       onTap: _onTap,
       child: AnimatedBuilder(
         animation: _scale,
-        builder: (_, child) => Transform.scale(
-          scale: _scale.value,
-          child: child,
-        ),
+        builder: (_, child) =>
+            Transform.scale(scale: _scale.value, child: child),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

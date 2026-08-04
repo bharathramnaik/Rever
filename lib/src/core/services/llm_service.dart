@@ -17,7 +17,9 @@ final class LlmOk extends LlmResult {
   final String text;
   final int? inputTokens;
   final int? outputTokens;
-  const LlmOk(this.text, {this.inputTokens, this.outputTokens});
+  final String? reasoning;
+
+  const LlmOk(this.text, {this.inputTokens, this.outputTokens, this.reasoning});
 }
 
 final class LlmUnavailable extends LlmResult {
@@ -45,6 +47,9 @@ class LlmMessage {
 ///   LLM_API_KEY_NVIDIA_NEMOTRON -> NVIDIA NIM (nemotron-3-ultra, with thinking)
 ///   LLM_API_KEY_NVIDIA_INKLING (+ LLM_MODEL_NVIDIA_INKLING) -> inkling slot
 ///   LLM_API_KEY_NVIDIA_3 (+ LLM_MODEL_NVIDIA_3) -> riva-translate slot
+///   LLM_API_KEY_TOKEN_ROUTER (+ LLM_MODEL_TOKEN_ROUTER) -> tokenrouter.com
+///     fallback (moonshotai/kimi-k3-free; reasoning comes back in
+///     `reasoning_content`)
 ///
 /// `--dart-define=LLM_PROVIDER=<nvidia-nemotron|nvidia-inkling|nvidia-riva>`
 /// optionally reorders that provider to the front of the chain.
@@ -80,21 +85,21 @@ class LlmConfig {
   bool get isConfigured => apiKey.isNotEmpty;
 
   Map<String, dynamic> toBody(List<LlmMessage> messages) => {
-        'model': model,
-        'messages': messages.map((m) => m.toJson()).toList(),
-        'max_tokens': maxTokens,
-        'temperature': temperature,
-        if (topP != null) 'top_p': topP,
-        'stream': false,
-        ...extraBody,
-      };
+    'model': model,
+    'messages': messages.map((m) => m.toJson()).toList(),
+    'max_tokens': maxTokens,
+    'temperature': temperature,
+    if (topP != null) 'top_p': topP,
+    'stream': false,
+    ...extraBody,
+  };
 
   Map<String, String> headers() => {
-        'Authorization': 'Bearer ${_normalizeKey(apiKey)}',
-        'Content-Type': 'application/json',
-        if (provider == 'openrouter') 'HTTP-Referer': 'https://rever.app',
-        ...extraHeaders,
-      };
+    'Authorization': 'Bearer ${_normalizeKey(apiKey)}',
+    'Content-Type': 'application/json',
+    if (provider == 'openrouter') 'HTTP-Referer': 'https://rever.app',
+    ...extraHeaders,
+  };
 
   /// Keys are raw `nvapi-...` values; tolerate an accidental `Bearer ` prefix.
   static String _normalizeKey(String key) {
@@ -107,15 +112,34 @@ class LlmConfig {
 
 /// Ordered list of provider configs to try, first configured first.
 final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
-  const nvNeoKey =
-      String.fromEnvironment('LLM_API_KEY_NVIDIA_NEMOTRON', defaultValue: '');
+  const nvNeoKey = String.fromEnvironment(
+    'LLM_API_KEY_NVIDIA_NEMOTRON',
+    defaultValue: '',
+  );
   const nvInkKey = String.fromEnvironment(
-      'LLM_API_KEY_NVIDIA_INKLING', defaultValue: '');
-  const inkModel = String.fromEnvironment('LLM_MODEL_NVIDIA_INKLING',
-      defaultValue: 'thinkingmachines/inkling');
-  const nvRivaKey = String.fromEnvironment('LLM_API_KEY_NVIDIA_3', defaultValue: '');
-  const rivaModel = String.fromEnvironment('LLM_MODEL_NVIDIA_3',
-      defaultValue: 'nvidia/riva-translate-4b-instruct-v2');
+    'LLM_API_KEY_NVIDIA_INKLING',
+    defaultValue: '',
+  );
+  const inkModel = String.fromEnvironment(
+    'LLM_MODEL_NVIDIA_INKLING',
+    defaultValue: 'thinkingmachines/inkling',
+  );
+  const nvRivaKey = String.fromEnvironment(
+    'LLM_API_KEY_NVIDIA_3',
+    defaultValue: '',
+  );
+  const rivaModel = String.fromEnvironment(
+    'LLM_MODEL_NVIDIA_3',
+    defaultValue: 'nvidia/riva-translate-4b-instruct-v2',
+  );
+  const trKey = String.fromEnvironment(
+    'LLM_API_KEY_TOKEN_ROUTER',
+    defaultValue: '',
+  );
+  const trModel = String.fromEnvironment(
+    'LLM_MODEL_TOKEN_ROUTER',
+    defaultValue: 'moonshotai/kimi-k3-free',
+  );
   const prefer = String.fromEnvironment('LLM_PROVIDER', defaultValue: '');
 
   final chain = <LlmConfig>[
@@ -127,7 +151,7 @@ final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
         apiKey: nvNeoKey,
         maxTokens: 16384,
         temperature: 1.0,
-        timeoutSeconds: 45,
+        timeoutSeconds: 120,
         extraBody: const {
           'chat_template_kwargs': {'enable_thinking': true},
           'reasoning_budget': 16384,
@@ -142,7 +166,7 @@ final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
         maxTokens: 8192,
         temperature: 1.0,
         topP: 0.95,
-        timeoutSeconds: 45,
+        timeoutSeconds: 120,
       ),
     if (nvRivaKey.isNotEmpty)
       LlmConfig(
@@ -152,7 +176,17 @@ final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
         apiKey: nvRivaKey,
         maxTokens: 2048,
         temperature: 0.2,
-        timeoutSeconds: 45,
+        timeoutSeconds: 60,
+      ),
+    if (trKey.isNotEmpty)
+      LlmConfig(
+        provider: 'token-router',
+        baseUrl: 'https://api.tokenrouter.com/v1',
+        model: trModel,
+        apiKey: trKey,
+        maxTokens: 4096,
+        temperature: 0.7,
+        timeoutSeconds: 120,
       ),
   ];
 
@@ -179,8 +213,8 @@ class LlmService {
   final List<Completer<void>> _queue = [];
 
   LlmService(this.config, [Dio? dio])
-      : _dio = dio ?? Dio(BaseOptions(validateStatus: (_) => true)),
-        _ownsDio = dio == null;
+    : _dio = dio ?? Dio(BaseOptions(validateStatus: (_) => true)),
+      _ownsDio = dio == null;
 
   Future<void> dispose() {
     if (_ownsDio) _dio.close();
@@ -198,18 +232,20 @@ class LlmService {
       for (final c in config) {
         if (!c.isConfigured) continue;
         try {
-          final result = await _doRequest(c, messages)
-              .timeout(Duration(seconds: c.timeoutSeconds));
+          final result = await _doRequest(
+            c,
+            messages,
+          ).timeout(Duration(seconds: c.timeoutSeconds));
           if (result is LlmOk && result.text.trim().isNotEmpty) return result;
-          if (result is LlmUnavailable) errors.add('${c.provider}: ${result.reason}');
+          if (result is LlmUnavailable)
+            errors.add('${c.provider}: ${result.reason}');
         } on TimeoutException {
           errors.add('${c.provider}: timeout (${c.timeoutSeconds}s)');
         } catch (e) {
           errors.add('${c.provider}: $e');
         }
       }
-      return LlmUnavailable(
-          'All providers failed: ${errors.join(' | ')}');
+      return LlmUnavailable('All providers failed: ${errors.join(' | ')}');
     } finally {
       _releaseSlot();
     }
@@ -258,10 +294,14 @@ class LlmService {
           final data = resp.data as Map<String, dynamic>;
           final choices = (data['choices'] as List?) ?? [];
           String? text;
+          String? reasoning;
           if (choices.isNotEmpty) {
             final msg = choices.first as Map<String, dynamic>;
             final message = msg['message'] as Map<String, dynamic>?;
             text = message?['content'] as String?;
+            // OpenAI-style `reasoning` or DeepSeek/kimi-style `reasoning_content`.
+            reasoning = (message?['reasoning'] ?? message?['reasoning_content'])
+                as String?;
           }
           final usage = data['usage'] as Map<String, dynamic>?;
           if (text == null || text.isEmpty) {
@@ -271,13 +311,14 @@ class LlmService {
             text,
             inputTokens: (usage?['prompt_tokens'] as num?)?.toInt(),
             outputTokens: (usage?['completion_tokens'] as num?)?.toInt(),
+            reasoning: reasoning,
           );
         }
 
         // 401/402/empty per-provider -> let the chain try the next provider.
-        final msg = ((resp.data as Map<String, dynamic>?)?['error']
-                ?['message'])
-            ?.toString() ??
+        final msg =
+            ((resp.data as Map<String, dynamic>?)?['error']?['message'])
+                ?.toString() ??
             resp.statusMessage;
         debugPrint("[llm] ${c.provider} failed: ${resp.statusCode} $msg");
         if (resp.statusCode == 401) {

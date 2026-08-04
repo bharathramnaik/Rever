@@ -178,7 +178,7 @@ class MeScreen extends ConsumerWidget {
                         child: Text(
                           'Learn anything. Remember everything. '
                           'Rever transforms complex knowledge into bite-sized, '
-                          'visual learning experiences with AI-powered tutoring '
+                          'visual learning experiences with AI-powered micro-learning '
                           'and spaced repetition.',
                         ),
                       ),
