@@ -14,7 +14,8 @@ CREATE INDEX IF NOT EXISTS idx_preferences_topics ON preferences USING GIN (topi
 
 ALTER TABLE preferences ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "preferences_own" ON preferences FOR ALL USING (
+DROP POLICY IF EXISTS "preferences_own" ON preferences;
+CREATE POLICY "preferences_own" ON preferences FOR ALL USING (
     profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid())
 ) WITH CHECK (
     profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid())

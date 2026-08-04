@@ -42,12 +42,12 @@ class LlmMessage {
 /// Keys are supplied via --dart-define only (never hardcoded). The chain is
 /// built from whichever provider keys are present:
 ///
-///   LLM_API_KEY_NVIDIA          -> NVIDIA NIM (kimi-k2.6)
 ///   LLM_API_KEY_NVIDIA_NEMOTRON -> NVIDIA NIM (nemotron-3-ultra, with thinking)
-///   LLM_API_KEY_NVIDIA_3 (+ LLM_MODEL_NVIDIA_3) -> extra NVIDIA fallback slot
+///   LLM_API_KEY_NVIDIA_INKLING (+ LLM_MODEL_NVIDIA_INKLING) -> inkling slot
+///   LLM_API_KEY_NVIDIA_3 (+ LLM_MODEL_NVIDIA_3) -> riva-translate slot
 ///
-/// `--dart-define=LLM_PROVIDER=<nvidia|nvidia-nemotron|nvidia-3>` optionally
-/// reorders that provider to the front of the chain.
+/// `--dart-define=LLM_PROVIDER=<nvidia-nemotron|nvidia-inkling|nvidia-riva>`
+/// optionally reorders that provider to the front of the chain.
 class LlmConfig {
   final String provider;
   final String baseUrl;
@@ -55,6 +55,7 @@ class LlmConfig {
   final String apiKey;
   final int maxTokens;
   final double temperature;
+  final double? topP;
   final int maxRetries;
   final int concurrency;
   final int timeoutSeconds;
@@ -68,6 +69,7 @@ class LlmConfig {
     required this.apiKey,
     this.maxTokens = 2048,
     this.temperature = 0.7,
+    this.topP,
     this.maxRetries = 2,
     this.concurrency = 8,
     this.timeoutSeconds = 30,
@@ -82,37 +84,41 @@ class LlmConfig {
         'messages': messages.map((m) => m.toJson()).toList(),
         'max_tokens': maxTokens,
         'temperature': temperature,
+        if (topP != null) 'top_p': topP,
         'stream': false,
-        if (extraBody.isNotEmpty) 'extra_body': extraBody,
+        ...extraBody,
       };
 
   Map<String, String> headers() => {
-        'Authorization': 'Bearer $apiKey',
+        'Authorization': 'Bearer ${_normalizeKey(apiKey)}',
         'Content-Type': 'application/json',
         if (provider == 'openrouter') 'HTTP-Referer': 'https://rever.app',
         ...extraHeaders,
       };
+
+  /// Keys are raw `nvapi-...` values; tolerate an accidental `Bearer ` prefix.
+  static String _normalizeKey(String key) {
+    final trimmed = key.trim();
+    return trimmed.toLowerCase().startsWith('bearer ')
+        ? trimmed.substring(7).trim()
+        : trimmed;
+  }
 }
 
 /// Ordered list of provider configs to try, first configured first.
 final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
-  const nvKey = String.fromEnvironment('LLM_API_KEY_NVIDIA', defaultValue: '');
   const nvNeoKey =
       String.fromEnvironment('LLM_API_KEY_NVIDIA_NEMOTRON', defaultValue: '');
-  const nv3Key = String.fromEnvironment('LLM_API_KEY_NVIDIA_3', defaultValue: '');
-  const nv3Model = String.fromEnvironment('LLM_MODEL_NVIDIA_3',
-      defaultValue: 'nvidia/nemotron-3-ultra-550b-a55b');
+  const nvInkKey = String.fromEnvironment(
+      'LLM_API_KEY_NVIDIA_INKLING', defaultValue: '');
+  const inkModel = String.fromEnvironment('LLM_MODEL_NVIDIA_INKLING',
+      defaultValue: 'thinkingmachines/inkling');
+  const nvRivaKey = String.fromEnvironment('LLM_API_KEY_NVIDIA_3', defaultValue: '');
+  const rivaModel = String.fromEnvironment('LLM_MODEL_NVIDIA_3',
+      defaultValue: 'nvidia/riva-translate-4b-instruct-v2');
   const prefer = String.fromEnvironment('LLM_PROVIDER', defaultValue: '');
 
   final chain = <LlmConfig>[
-    if (nvKey.isNotEmpty)
-      LlmConfig(
-        provider: 'nvidia',
-        baseUrl: 'https://integrate.api.nvidia.com/v1',
-        model: 'moonshotai/kimi-k2.6',
-        apiKey: nvKey,
-        timeoutSeconds: 30,
-      ),
     if (nvNeoKey.isNotEmpty)
       LlmConfig(
         provider: 'nvidia-nemotron',
@@ -127,13 +133,26 @@ final llmProviderChainProvider = Provider<List<LlmConfig>>((ref) {
           'reasoning_budget': 16384,
         },
       ),
-    if (nv3Key.isNotEmpty)
+    if (nvInkKey.isNotEmpty)
       LlmConfig(
-        provider: 'nvidia-3',
+        provider: 'nvidia-inkling',
         baseUrl: 'https://integrate.api.nvidia.com/v1',
-        model: nv3Model,
-        apiKey: nv3Key,
-        timeoutSeconds: 30,
+        model: inkModel,
+        apiKey: nvInkKey,
+        maxTokens: 8192,
+        temperature: 1.0,
+        topP: 0.95,
+        timeoutSeconds: 45,
+      ),
+    if (nvRivaKey.isNotEmpty)
+      LlmConfig(
+        provider: 'nvidia-riva',
+        baseUrl: 'https://integrate.api.nvidia.com/v1',
+        model: rivaModel,
+        apiKey: nvRivaKey,
+        maxTokens: 2048,
+        temperature: 0.2,
+        timeoutSeconds: 45,
       ),
   ];
 

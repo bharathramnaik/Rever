@@ -28,7 +28,11 @@ jobs:
 
       - run: flutter test
 
-      - run: flutter build apk --debug
+      - run: |
+          flutter build apk --debug \
+            --dart-define=LLM_API_KEY_NVIDIA_NEMOTRON=${{ secrets.LLM_API_KEY_NVIDIA_NEMOTRON }} \
+            --dart-define=LLM_API_KEY_NVIDIA_INKLING=${{ secrets.LLM_API_KEY_NVIDIA_INKLING }} \
+            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -47,7 +51,11 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build web --base-href=/Rever/
+      - run: |
+          flutter build web --base-href=/Rever/ \
+            --dart-define=LLM_API_KEY_NVIDIA_NEMOTRON=${{ secrets.LLM_API_KEY_NVIDIA_NEMOTRON }} \
+            --dart-define=LLM_API_KEY_NVIDIA_INKLING=${{ secrets.LLM_API_KEY_NVIDIA_INKLING }} \
+            --dart-define=LLM_API_KEY_NVIDIA_3=${{ secrets.LLM_API_KEY_NVIDIA_3 }}
 
       - uses: actions/upload-artifact@v4
         with:

@@ -18,5 +18,6 @@ CREATE INDEX IF NOT EXISTS idx_idea_relationships_source ON idea_relationships(s
 CREATE INDEX IF NOT EXISTS idx_idea_relationships_target ON idea_relationships(target_idea_id);
 
 ALTER TABLE idea_relationships ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "idea_relationships_read"
+DROP POLICY IF EXISTS "idea_relationships_read" ON idea_relationships;
+CREATE POLICY "idea_relationships_read"
     ON idea_relationships FOR SELECT USING (true);

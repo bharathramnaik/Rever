@@ -18,6 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_signals_type ON signals(signal_type, created_at);
 CREATE INDEX IF NOT EXISTS idx_signals_idea ON signals(idea_card_id);
 
 ALTER TABLE signals ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "signals_own" ON signals USING (profile_id IN (
+DROP POLICY IF EXISTS "signals_own" ON signals;
+CREATE POLICY "signals_own" ON signals USING (profile_id IN (
     SELECT id FROM profiles WHERE account_id = auth.uid()
 ));

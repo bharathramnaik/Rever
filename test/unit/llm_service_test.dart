@@ -151,4 +151,43 @@ void main() {
     expect(res, isA<LlmUnavailable>());
     expect((res as LlmUnavailable).reason, contains('All providers failed'));
   });
+
+  test('normalizes Bearer prefix and emits top_p', () async {
+    final adapter = FakeAdapter();
+    final dio = Dio(BaseOptions(validateStatus: (_) => true));
+    dio.httpClientAdapter = adapter;
+
+    registerFallbackValue(RequestOptions(path: '/chat/completions'));
+    registerFallbackValue(Stream<Uint8List>.empty());
+    registerFallbackValue(Future.value());
+
+    RequestOptions? captured;
+    when(() => adapter.fetch(any(), any(), any())).thenAnswer((inv) async {
+      captured = inv.positionalArguments.first as RequestOptions;
+      return ResponseBody.fromString(
+        json.encode({
+          'choices': [
+            {'message': {'content': 'ok'}}
+          ],
+        }),
+        200,
+        headers: {'content-type': ['application/json']},
+      );
+    });
+
+    final cfg = LlmConfig(
+      provider: 'nvidia',
+      baseUrl: 'https://integrate.api.nvidia.com/v1',
+      model: _kimi,
+      apiKey: 'Bearer nvapi-fake-key',
+      topP: 0.95,
+    );
+    final svc = LlmService([cfg], dio);
+    final res = await svc.complete([LlmMessage(role: 'user', content: 'hi')]);
+    expect(res, isA<LlmOk>());
+    expect(captured!.headers['Authorization'], 'Bearer nvapi-fake-key');
+    final body = captured!.data as Map<String, dynamic>;
+    expect(body['top_p'], 0.95);
+    expect(body['stream'], false);
+  });
 }
