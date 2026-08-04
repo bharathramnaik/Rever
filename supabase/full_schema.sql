@@ -1,8 +1,8 @@
--- ============================================================
--- Rever — Sprint 1-6 migrations (007-011) consolidated
+﻿-- ============================================================
+-- Rever â€” Sprint 1-6 migrations (007-011) consolidated
 -- Paste this ENTIRE file once into: Dashboard > SQL Editor > New query > Run
 -- Safe to run multiple times (all statements are idempotent).
--- Migrations 001-006 are already applied to the remote DB — do NOT re-run them.
+-- Migrations 001-006 are already applied to the remote DB â€” do NOT re-run them.
 -- ============================================================
 
 -- 007: Idea knowledge graph (Sprint 1)
@@ -166,8 +166,8 @@ CREATE TABLE IF NOT EXISTS submissions (
     profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT ''pending''
-        CHECK (status IN (''pending'', ''approved'', ''rejected'')),
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'rejected')),
     created_at TIMESTAMPTZ DEFAULT now(),
     approved_at TIMESTAMPTZ
 );
@@ -176,7 +176,7 @@ ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "submissions_read" ON submissions;
 CREATE POLICY "submissions_read" ON submissions FOR SELECT
     USING (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid())
-           OR status = ''approved'');
+           OR status = 'approved');
 DROP POLICY IF EXISTS "submissions_insert" ON submissions;
 CREATE POLICY "submissions_insert" ON submissions FOR INSERT
     WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE account_id = auth.uid()));
@@ -189,8 +189,8 @@ CREATE POLICY "submissions_update_own" ON submissions FOR UPDATE
 CREATE TABLE IF NOT EXISTS book_access (
     profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     source_id UUID NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
-    status TEXT NOT NULL DEFAULT ''requested''
-        CHECK (status IN (''requested'', ''granted'', ''denied'')),
+    status TEXT NOT NULL DEFAULT 'requested'
+        CHECK (status IN ('requested', 'granted', 'denied')),
     created_at TIMESTAMPTZ DEFAULT now(),
     PRIMARY KEY (profile_id, source_id)
 );
